@@ -219,3 +219,117 @@ struct AXWriteVerificationTests {
         #expect("\(AXSelectedRange(location: 12, length: 3))" == "{12, 3}")
     }
 }
+
+/// Telegram inserts and returns `kAXErrorFailure`. Arc returns success and
+/// inserts nothing. The caret decides; the error code does not.
+@Suite("AX post-write action")
+struct AXPostWriteActionTests {
+    private let landed = AXWriteVerification.verdict(
+        before: AXSelectedRange(location: 0, length: 0),
+        after: AXSelectedRange(location: 60, length: 0),
+        insertedUTF16Count: 60
+    )
+    private let discarded = AXWriteVerification.verdict(
+        before: AXSelectedRange(location: 12, length: 0),
+        after: AXSelectedRange(location: 12, length: 0),
+        insertedUTF16Count: 60
+    )
+    private let unverifiable = AXWriteVerification.verdict(
+        before: AXSelectedRange(location: 12, length: 0),
+        after: nil,
+        insertedUTF16Count: 60
+    )
+
+    @Test("a caret that moved is accepted even when the AX call returned an error")
+    func errorWithMovedCaretSkipsUnicode() {
+        // Telegram, 2026-10-31: one hotkey, one final transcript, text_len=60.
+        // Setting kAXSelectedTextAttribute returned kAXErrorFailure (-25200)
+        // with settable=true, and the message was in the field. The ladder
+        // then posted one Unicode chunk of those same 60 units.
+        let action = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: landed
+        )
+        #expect(action == .accept(despiteError: true))
+    }
+
+    @Test("a failed write whose caret did not move still falls through")
+    func errorWithUnchangedCaretFallsThrough() {
+        let action = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: discarded
+        )
+        #expect(action == .fallThrough)
+    }
+
+    @Test("a failed write with an unreadable caret falls through unless the character count grew")
+    func errorWithUnreadableCaret() {
+        let unread = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: unverifiable
+        )
+        #expect(unread == .fallThrough)
+
+        // The range can stay stale while the field grows. Any increase is
+        // enough — the same rule as an inexact caret advance.
+        let grew = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: discarded,
+            characterCountBefore: 10,
+            characterCountAfter: 70
+        )
+        #expect(grew == .accept(despiteError: true))
+
+        let grewByOne = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: unverifiable,
+            characterCountBefore: 10,
+            characterCountAfter: 11
+        )
+        #expect(grewByOne == .accept(despiteError: true))
+    }
+
+    @Test("a character count that did not grow does not invent a landing")
+    func countDidNotGrow() {
+        for (before, after) in [(10, 10), (10, 9), (0, 0)] {
+            let action = AXWriteVerification.postWriteAction(
+                writeReturnedSuccess: false,
+                verdict: discarded,
+                characterCountBefore: before,
+                characterCountAfter: after
+            )
+            #expect(action == .fallThrough)
+        }
+        let missing = AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: false,
+            verdict: discarded,
+            characterCountBefore: nil,
+            characterCountAfter: 70
+        )
+        #expect(missing == .fallThrough)
+    }
+
+    @Test("a successful write whose caret moved is accepted, and one whose caret did not still falls through")
+    func successFollowsTheCaret() {
+        // The second expectation is the Arc path and the Telegram sessions
+        // that returned success, left the caret unmoved, and were recovered by
+        // Unicode without a duplicate. A character-count increase must not
+        // close that path: the count is only evidence after an error return.
+        #expect(
+            AXWriteVerification.postWriteAction(writeReturnedSuccess: true, verdict: landed)
+                == .accept(despiteError: false)
+        )
+        #expect(
+            AXWriteVerification.postWriteAction(
+                writeReturnedSuccess: true,
+                verdict: discarded,
+                characterCountBefore: 10,
+                characterCountAfter: 70
+            ) == .fallThrough
+        )
+        #expect(
+            AXWriteVerification.postWriteAction(writeReturnedSuccess: true, verdict: unverifiable)
+                == .fallThrough
+        )
+    }
+}

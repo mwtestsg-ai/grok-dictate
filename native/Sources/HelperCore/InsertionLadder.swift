@@ -376,11 +376,16 @@ public final class InsertionLadder: InsertionPerforming {
                 // off would quietly restore the Arc bug *and* the green pill.
                 return InsertionOutcome(tier: .ax, ok: true, error: nil, frontmost: current)
             case let .notLanded(reason), let .failed(reason):
-                // The AX tier's own "did not land" is a decline: it read the
-                // caret back *before* anything else ran, so falling through to
-                // Unicode is safe and is what recovers the text. Folded in here
-                // rather than given a branch of its own, because treating it as
-                // terminal would delete the recovery path the Arc fix relies on.
+                // A `.failed` here means the text is not in the field.
+                // `AXInserter` reads the caret back — and, when the write's
+                // return code is an error, the character count — before saying
+                // so. Telegram returns `kAXErrorFailure` and still inserts;
+                // that comes back as `.confirmed` and does not reach this
+                // branch. The Arc case stays a `.failed`: the write returned
+                // success and the caret did not move, so Unicode is what
+                // recovers the text. Folded in with `notLanded` rather than
+                // given a branch of its own, because treating either as
+                // terminal would delete that recovery.
                 reasons.append("AX: \(reason)")
                 log(.info, "AX tier declined, falling through to Unicode injection — \(reason)")
             case let .aborted(reason):

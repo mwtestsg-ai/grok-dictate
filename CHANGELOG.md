@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rcmd.2] — 2026-10-31
+
+### Fixed
+
+- **A failed AX write that still inserted no longer types the transcript twice.** Telegram for macOS can return `kAXErrorFailure` (-25200) from `kAXSelectedTextAttribute` after putting the text in the field. The helper now reads the caret back, and the character count if the caret does not show a landing, and skips Unicode injection when the text is already there. A successful write whose caret does not move still falls through to Unicode — that is the case where the application accepted the write and discarded it.
+
 ## [0.5.0-rcmd] — 2026-10-31
 
 Personal build. The version string is `0.5.0-rcmd` so it can be told apart from upstream 0.5.0.
