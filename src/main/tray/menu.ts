@@ -304,23 +304,15 @@ export function buildTrayMenu(model: TrayModel): readonly TrayMenuItem[] {
       label: 'Language',
       type: 'submenu',
       submenu: [
-        /**
-         * Presented as a *preference*, not an override, on the evidence of
-         * spike 3 (docs/spike-results.md; docs/phase-1-report.md §5.1):
-         * English audio sent with `language=de` came back `"language":"en"`
-         * with a correctly formatted English transcript. The parameter did not
-         * steer recognition in any test that could be constructed, so a menu
-         * item promising "force German" would be a lie.
-         */
         {
           id: 'language.note',
-          label: 'The server detects the language it hears.',
+          label: 'Only English and Greek are inserted.',
           enabled: false,
         },
         { id: 'language.sep', type: 'separator' },
-        languageItem('auto', 'Automatic', config.languageMode),
-        languageItem('de', 'Prefer Deutsch', config.languageMode),
-        languageItem('en', 'Prefer English', config.languageMode),
+        languageItem('auto', 'English or Greek', config.languageMode),
+        languageItem('en', 'English', config.languageMode),
+        languageItem('el', 'Greek', config.languageMode),
       ],
     },
     {

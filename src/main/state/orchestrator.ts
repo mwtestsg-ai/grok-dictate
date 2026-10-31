@@ -24,6 +24,8 @@ import type {
 } from '@contracts/ports.js';
 import type { AppSnapshot, HudView } from '@contracts/events.js';
 import { resolveTurnSttModel, resolveWireLanguage } from '@contracts/config.js';
+import { admitDictationText } from '@shared/dictation-language.js';
+import { transcriptForClipboard } from './transcript-clipboard.js';
 import { BYTES_PER_SECOND, MAX_RECORDING_MS } from '@shared/constants.js';
 import { systemLanguageSubtag } from '@shared/env.js';
 import { sameHudView } from '@shared/hud-view.js';
@@ -348,6 +350,14 @@ export class Orchestrator {
               this.#mark('socket_open');
             },
             onInterim: (text) => {
+              if (!admitDictationText(text, this.#detectedLanguage, config.get().languageMode)) {
+                this.#log.info('dropped a preview in a language other than the ones allowed', {
+                  detected: this.#detectedLanguage,
+                  mode: config.get().languageMode,
+                });
+                this.dispatch({ type: 'TRANSCRIPT_INTERIM', sessionId, text: '' });
+                return;
+              }
               if (text.trim().length > 0) {
                 const timing = this.#timing;
                 if (timing !== null && timing.sessionId === sessionId) {
@@ -362,6 +372,16 @@ export class Orchestrator {
               this.dispatch({ type: 'TRANSCRIPT_INTERIM', sessionId, text });
             },
             onFinal: (text) => {
+              if (!admitDictationText(text, this.#detectedLanguage, config.get().languageMode)) {
+                this.#log.info(
+                  'dropped a final transcript in a language other than the ones allowed',
+                  {
+                    detected: this.#detectedLanguage,
+                    mode: config.get().languageMode,
+                  },
+                );
+                return;
+              }
               const timing = this.#timing;
               if (timing !== null && timing.sessionId === sessionId) {
                 timing.finals += 1;
@@ -434,6 +454,15 @@ export class Orchestrator {
         this.#mark('insert_begin', { text_len: effect.text.length, route: effect.route });
         void native.insert(effect.text, effect.targetBundleId, effect.route).then((outcome) => {
           this.dispatch({ type: 'INSERT_RESULT', sessionId, outcome });
+          // After the helper returns, including a paste that will still clear
+          // its promise if the change count is unchanged. See
+          // `transcriptForClipboard`.
+          const text = transcriptForClipboard(
+            outcome.ok,
+            config.get().copyTranscript,
+            this.#snapshot.ctx.lastTranscript,
+          );
+          if (text !== null) this.copyToClipboard(text);
         });
         return;
       }

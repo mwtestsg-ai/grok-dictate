@@ -53,7 +53,8 @@ import {
  * if the server reports a detected language, read it; otherwise sticky
  * per-utterance detection.
  */
-export const LANGUAGE_MODES = ['auto', 'de', 'en'] as const;
+/** `auto` hears English or Greek. `en` and `el` pin one of those two. */
+export const LANGUAGE_MODES = ['auto', 'en', 'el'] as const;
 export const LanguageModeSchema = z.enum(LANGUAGE_MODES);
 export type LanguageMode = (typeof LANGUAGE_MODES)[number];
 
@@ -272,6 +273,13 @@ export const AppConfigSchema = z.object({
   muteWhileRecording: z.boolean().default(true),
 
   /**
+   * After a successful insert, leave the transcript on the system clipboard
+   * as a normal copy so a clipboard manager keeps it. The paste tier's promise
+   * is cleared or skipped; this write is the one that remains. Default on.
+   */
+  copyTranscript: z.boolean().default(true),
+
+  /**
    * Chromium echo cancellation, noise suppression, auto-gain — telephony, not
    * dictation.
    *
@@ -356,7 +364,7 @@ export const DEFAULT_CONFIG: AppConfig = AppConfigSchema.parse({});
 export function parseConfig(raw: unknown): { config: AppConfig; issues: string[] } {
   const source =
     raw !== null && typeof raw === 'object' && !Array.isArray(raw)
-      ? migrateHotkeys(migrateSttFields(raw as Record<string, unknown>))
+      ? migrateHotkeys(migrateLanguage(migrateSttFields(raw as Record<string, unknown>)))
       : raw;
 
   const parsed = AppConfigSchema.safeParse(source);
@@ -410,6 +418,12 @@ function migrateHotkeys(source: Record<string, unknown>): Record<string, unknown
   return { ...source, hotkeys: nextHotkeys };
 }
 
+/** Deutsch was a tray option. This build only inserts English and Greek. */
+function migrateLanguage(source: Record<string, unknown>): Record<string, unknown> {
+  if (source.languageMode !== 'de') return source;
+  return { ...source, languageMode: 'auto' };
+}
+
 /**
  * Lift a config written before transport and model were separate fields.
  *
@@ -459,14 +473,13 @@ function migrateSttFields(source: Record<string, unknown>): Record<string, unkno
  */
 export function resolveWireLanguage(
   mode: LanguageMode,
-  detected: string | undefined,
-  localeSubtag: string | undefined,
+  _detected?: string,
+  _localeSubtag?: string,
 ): string | null {
-  if (mode === 'auto') return null;
-  if (isCatalogLanguage(mode)) return mode;
-  if (detected !== undefined && isCatalogLanguage(detected)) return detected;
-  if (localeSubtag !== undefined && isCatalogLanguage(localeSubtag)) return localeSubtag;
-  return STT_LANGUAGE_DEFAULT;
+  // One code only, and it is a bias. `auto` omits it so English and Greek can
+  // both be detected. The output filter is what refuses every other language.
+  if (mode === 'en' || mode === 'el') return mode;
+  return null;
 }
 
 export function isCatalogLanguage(code: string): boolean {

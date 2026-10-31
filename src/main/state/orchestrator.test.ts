@@ -130,8 +130,9 @@ class StubHelper implements NativeHelperPort {
     this.inserted.push(text);
     return Promise.resolve(this.outcome);
   }
-  copy(): void {
-    throw new Error('the clipboard is written only on an explicit user action');
+  readonly copied: string[] = [];
+  copy(text: string): void {
+    this.copied.push(text);
   }
   muteOutput(): void {
     this.mutes.push('mute');

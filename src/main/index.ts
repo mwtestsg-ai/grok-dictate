@@ -34,7 +34,7 @@ import { AppConfigSchema, resolveTurnSttModel, resolveWireLanguage } from '@cont
 import { addLogSink, consoleSink, createLogger, setLogLevel } from '@shared/logger.js';
 import { appError } from '@shared/result.js';
 import { STATS_ROW_CAP, aggregateStats } from '@shared/stats.js';
-import { envString, systemLanguageSubtag } from '@shared/env.js';
+import { systemLanguageSubtag } from '@shared/env.js';
 import { parseWav } from '@shared/wav.js';
 import { createAudioSource } from './audio/index.js';
 import { createAuthProvider } from './auth/index.js';
@@ -109,7 +109,6 @@ function main(): void {
       },
       log,
     ),
-    envToken: envString('XAI_API_KEY'),
     // Spawns `grok models` so the CLI renews its own login. The app still never
     // touches a refresh token — see the header of `auth/renew.ts`.
     renewer: new GrokCliRenewer({ logger: log }),
@@ -455,13 +454,6 @@ function main(): void {
         }
         case 'get-auth-status':
           return { type: 'auth-status', status: await auth.status() };
-        case 'set-api-key': {
-          const result = await auth.setApiKey(request.key);
-          if (!result.ok) return { type: 'error', error: result.error };
-          return { type: 'auth-status', status: result.value };
-        }
-        case 'clear-api-key':
-          return { type: 'auth-status', status: await auth.clearApiKey() };
         case 'get-grok-com-status':
           return { type: 'grok-com-status', signedIn: await grokCom.hasSession() };
         case 'grok-com-sign-out':
@@ -521,6 +513,7 @@ function main(): void {
     // a token that expired while the app was closed is the CLI's to renew, and
     // asking it takes about a second. Awaited so the decision below sees the
     // outcome rather than racing it.
+    await auth.discardStoredApiKey();
     await auth.renewIfExpiringSoon();
     const status = await auth.refresh();
     log.info('grok-dictate ready', {

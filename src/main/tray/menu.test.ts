@@ -151,9 +151,9 @@ describe('buildTrayMenu', () => {
   });
 
   it('checks the language mode currently in force', () => {
-    const menu = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, languageMode: 'de' } }));
+    const menu = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, languageMode: 'el' } }));
     const language = menu.find((i) => i.id === 'language')?.submenu ?? [];
-    expect(language.find((i) => i.id === 'language.de')?.checked).toBe(true);
+    expect(language.find((i) => i.id === 'language.el')?.checked).toBe(true);
     expect(language.find((i) => i.id === 'language.auto')?.checked).toBe(false);
     expect(
       language.every((i) => i.type === 'radio' || i.enabled === false || i.id.endsWith('sep')),
@@ -167,7 +167,9 @@ describe('buildTrayMenu', () => {
     const language = buildTrayMenu(model()).find((i) => i.id === 'language')?.submenu ?? [];
     const labels = language.map((i) => i.label ?? '').join(' ');
     expect(labels).not.toMatch(/force/i);
-    expect(labels).toMatch(/Prefer Deutsch/);
+    expect(labels).toMatch(/English/);
+    expect(labels).toMatch(/Greek/);
+    expect(labels).not.toMatch(/Deutsch/);
     expect(language.find((i) => i.id === 'language.note')?.enabled).toBe(false);
   });
 

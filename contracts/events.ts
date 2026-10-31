@@ -409,8 +409,6 @@ export type InvokeRequest =
   | { type: 'retry-transcription'; id: string }
   | { type: 'get-snapshot' }
   | { type: 'get-auth-status' }
-  | { type: 'set-api-key'; key: string }
-  | { type: 'clear-api-key' }
   | { type: 'get-grok-com-status' }
   | { type: 'grok-com-sign-out' }
   | { type: 'grok-com-passkey-signin' }
@@ -444,7 +442,7 @@ export type InvokeResponse =
  * Auth status (sign-in window + Settings)
  * ------------------------------------------------------------------ */
 
-export const AUTH_SOURCES = ['api-key', 'grok-cli', 'environment'] as const;
+export const AUTH_SOURCES = ['grok-cli'] as const;
 export type AuthSource = (typeof AUTH_SOURCES)[number];
 
 /**

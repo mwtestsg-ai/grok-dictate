@@ -36,9 +36,9 @@ import { formatKeyterms, parseBoundedInteger, parseKeyterms } from './validation
 const api = window.grokDictate;
 
 const LANGUAGE_OPTIONS: readonly (readonly [LanguageMode, string])[] = [
-  ['auto', 'Automatic'],
-  ['de', 'Deutsch'],
+  ['auto', 'English or Greek'],
   ['en', 'English'],
+  ['el', 'Greek'],
 ];
 
 const STT_TRANSPORT_OPTIONS: readonly (readonly [SttTransport, string])[] = [
@@ -151,7 +151,6 @@ export function SettingsView(): React.JSX.Element {
   }
 
   const keyterms = parseKeyterms(keytermText);
-  const apiKeySignedIn = auth?.state === 'signed-in' && auth.source === 'api-key';
 
   return (
     <PanelShell
@@ -174,41 +173,6 @@ export function SettingsView(): React.JSX.Element {
       <div className="group">
         <h2 className="group-title">Account</h2>
         <div className="card">
-          <div className="card-row">
-            <span className="row-label">xAI API key</span>
-            <span className="control">
-              {auth === null ? (
-                <span className="unit">Checking…</span>
-              ) : apiKeySignedIn ? (
-                <>
-                  <span className="chip ok">Signed in</span>
-                  <button
-                    type="button"
-                    className="ghost destructive"
-                    onClick={() => {
-                      void request({ type: 'clear-api-key' }, 'auth-status').then((outcome) => {
-                        if (outcome.ok) setAuth(outcome.value.status);
-                      });
-                    }}
-                  >
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="chip">Not signed in</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      api.send({ type: 'open-window', window: 'signin' });
-                    }}
-                  >
-                    Sign in…
-                  </button>
-                </>
-              )}
-            </span>
-          </div>
           <div className="card-row">
             <span className="row-label">
               grok.com
@@ -315,7 +279,7 @@ export function SettingsView(): React.JSX.Element {
           <div className="card-row">
             <span className="row-label">
               Keep the Grok CLI login signed in
-              <InfoTip text="A Grok CLI login lasts a few hours. Rather than failing a dictation and asking you to run `grok` yourself, Grok Dictate runs `grok models` in the background shortly before the token expires and lets the CLI renew its own login. It never handles the token itself. Does nothing if you signed in with an xAI API key, which does not expire." />
+              <InfoTip text="A Grok CLI login lasts a few hours. Rather than failing a dictation and asking you to run `grok` yourself, Grok Dictate runs `grok models` in the background shortly before the token expires and lets the CLI renew its own login. It never handles the token itself." />
             </span>
             <Switch
               checked={config.autoRenewLogin}
@@ -333,7 +297,7 @@ export function SettingsView(): React.JSX.Element {
           <div className="card-row">
             <span className="row-label">
               Language
-              <InfoTip text="The server detects the language it hears and reports it back, so this is a preference rather than an override — English speech sent as German still came back as English in testing. Every transcript records the language that was actually detected." />
+              <InfoTip text="Only English and Greek are inserted. Automatic leaves the language unset so the server can hear either one, then drops anything it labels as another language. English or Greek sends that single code as a bias. The speech API has no allowlist." />
             </span>
             <span className="control">
               <Segmented
@@ -347,7 +311,7 @@ export function SettingsView(): React.JSX.Element {
           <div className="card-row">
             <span className="row-label">
               Dictation via
-              <InfoTip text="The xAI API uses your API key or Grok CLI login and bills streaming STT. grok.com uses the website session and STT 2 Fast, the model grok.com composer dictate uses — not a version of the API models." />
+              <InfoTip text="xAI API uses the Grok CLI login and talks to api.x.ai. grok.com uses the website session and STT 2 Fast." />
             </span>
             <span className="control">
               <Segmented
@@ -565,6 +529,17 @@ export function SettingsView(): React.JSX.Element {
             />
           </div>
           <div className="card-row">
+            <span className="row-label">
+              Copy each transcript
+              <InfoTip text="After a dictation is inserted, the transcript is also copied to the clipboard so a clipboard manager can keep it. The paste used to insert text is taken back off the clipboard; this copy is what remains." />
+            </span>
+            <Switch
+              checked={config.copyTranscript}
+              onChange={(next) => save({ copyTranscript: next })}
+              ariaLabel="Copy each transcript to the clipboard"
+            />
+          </div>
+          <div className="card-row">
             <span className="row-label">Open Grok Dictate at login</span>
             <Switch
               checked={config.launchAtLogin}
@@ -579,21 +554,14 @@ export function SettingsView(): React.JSX.Element {
 }
 
 function apiCredentialCaption(auth: AuthStatus | null): string {
-  if (auth === null) return 'Checking which xAI API login is available…';
+  if (auth === null) return 'Checking the Grok CLI login…';
   if (auth.state === 'signed-out') {
-    return 'No xAI API key or Grok CLI login yet. The xAI API path needs one of those.';
+    return 'No Grok CLI login yet. The xAI API path needs that account.';
   }
   if (auth.state === 'expired') {
-    return 'The Grok CLI login is expired. Renew it above, or add an xAI API key.';
+    return 'The Grok CLI login is expired. Refresh it above, or sign in again.';
   }
-  switch (auth.source) {
-    case 'api-key':
-      return 'The xAI API path will use the xAI API key.';
-    case 'environment':
-      return 'The xAI API path will use XAI_API_KEY from the environment.';
-    case 'grok-cli':
-      return 'The xAI API path will use the Grok CLI login.';
-  }
+  return 'The xAI API path will use the Grok CLI login.';
 }
 
 function dictationHoldCaption(
@@ -614,15 +582,9 @@ function dictationHoldCaption(
 
   if (auth === null) return `This hold will use ${model} on the xAI API.${unknown}`;
   if (auth.state !== 'signed-in') {
-    return `This hold will use ${model} once you add an xAI API key or a Grok CLI login.${unknown}`;
+    return `This hold will use ${model} once you sign in with the Grok CLI.${unknown}`;
   }
-  const source =
-    auth.source === 'api-key'
-      ? 'your API key'
-      : auth.source === 'environment'
-        ? 'XAI_API_KEY from the environment'
-        : 'the Grok CLI login';
-  return `This hold will use ${model} on ${source}.${unknown}`;
+  return `This hold will use ${model} on the Grok CLI login.${unknown}`;
 }
 
 function formatExpiryClock(iso: string): string {

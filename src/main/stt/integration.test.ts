@@ -165,7 +165,7 @@ describe('press → capture → real socket → insert', () => {
       text: 'Hello there, this is a test. Please confirm the details.',
       isFinal: true,
       speechFinal: true,
-      language: 'de',
+      language: 'en',
     });
     server.done(12.865);
 
@@ -180,12 +180,13 @@ describe('press → capture → real socket → insert', () => {
 
     // History records the language the server *detected* (spike 1).
     expect(history.entries[0]).toMatchObject({
-      language: 'de',
+      language: 'en',
       inserted: true,
       frontmostBundleId: 'com.apple.TextEdit',
     });
-    // Nothing reached the pasteboard.
-    expect(helper.copied).toEqual([]);
+    // The paste tier's promise is not this write. After a successful insert the
+    // transcript is copied so a clipboard manager can keep it.
+    expect(helper.copied).toEqual(['Hello there, this is a test. Please confirm the details.']);
   });
 
   it('waits for transcript.done before inserting, so a second final is not lost', async () => {
@@ -233,7 +234,7 @@ describe('press → capture → real socket → insert', () => {
 
     orchestrator.dispatch({ type: 'PTT_DOWN', ts: Date.now() });
     await server.waitForConnections(1);
-    server.partial({ text: 'Der Server bleibt stumm.', speechFinal: true, language: 'de' });
+    server.partial({ text: 'Der Server bleibt stumm.', speechFinal: true, language: 'en' });
     await waitFor(() => orchestrator.snapshot.ctx.committed.length === 1);
     orchestrator.dispatch({ type: 'PTT_UP', ts: Date.now() });
 
@@ -266,7 +267,7 @@ describe('press → capture → real socket → insert', () => {
     orchestrator.dispatch({ type: 'PTT_UP', ts: Date.now() });
     await waitFor(() => server.text.length > 0);
 
-    server.partial({ text: 'Kurz und gut.', speechFinal: true, language: 'de' });
+    server.partial({ text: 'Kurz und gut.', speechFinal: true, language: 'en' });
     server.done(12.865);
     await waitFor(() => orchestrator.snapshot.state === 'idle');
 
@@ -337,7 +338,7 @@ describe('press → capture → real socket → insert', () => {
   it('ends the turn when the server resets after audio.done without a done frame', async () => {
     orchestrator.dispatch({ type: 'PTT_DOWN', ts: Date.now() });
     await server.waitForConnections(1);
-    server.partial({ text: 'Kurz.', speechFinal: true, language: 'de' });
+    server.partial({ text: 'Kurz.', speechFinal: true, language: 'en' });
     await waitFor(() => orchestrator.snapshot.ctx.committed.length === 1);
 
     orchestrator.dispatch({ type: 'PTT_UP', ts: Date.now() });

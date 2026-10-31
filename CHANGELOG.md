@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rcmd.3] — 2026-10-31
+
+### Changed
+
+- **Only English and Greek are inserted.** The tray and Settings offer English, Greek, or both. Automatic omits the `language` parameter so the server can hear either one; a pin sends `en` or `el` as a bias. The speech API has no allowlist, so anything it labels as another language is dropped, and text in any other script is dropped when it sends no label.
+- **The xAI API key sign-in is gone.** Dictation on the xAI API uses the Grok CLI account. A previously stored key is deleted on launch. grok.com remains the login for STT 2 Fast.
+- **Each successful dictation is copied to the clipboard** so a clipboard manager can keep it. The setting is on by default. The paste tier still clears its own promise; this copy is what remains.
+
 ## [0.5.0-rcmd.2] — 2026-10-31
 
 ### Fixed

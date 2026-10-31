@@ -161,18 +161,18 @@ describe('config defaults', () => {
   });
 
   it('ignores unknown extra fields rather than rejecting the file', () => {
-    const { config, issues } = parseConfig({ languageMode: 'de', someFutureFlag: true });
+    const { config, issues } = parseConfig({ languageMode: 'el', someFutureFlag: true });
     expect(issues).toEqual([]);
-    expect(config.languageMode).toBe('de');
+    expect(config.languageMode).toBe('el');
     expect(config.micProcessing).toBe(false);
   });
 });
 
 describe('parseConfig', () => {
   it('accepts a valid config unchanged', () => {
-    const { config, issues } = parseConfig({ ...DEFAULT_CONFIG, languageMode: 'de' });
+    const { config, issues } = parseConfig({ ...DEFAULT_CONFIG, languageMode: 'el' });
     expect(issues).toEqual([]);
-    expect(config.languageMode).toBe('de');
+    expect(config.languageMode).toBe('el');
   });
 
   it('salvages the good fields when one is invalid, rather than discarding the file', () => {
@@ -208,13 +208,24 @@ describe('resolveWireLanguage', () => {
     expect(resolveWireLanguage('auto', 'de', 'en')).toBeNull();
   });
 
-  it('sends the explicit code for de and en', () => {
-    expect(resolveWireLanguage('de', undefined, undefined)).toBe('de');
+  it('sends en or el, and nothing else', () => {
     expect(resolveWireLanguage('en', undefined, undefined)).toBe('en');
+    expect(resolveWireLanguage('el', undefined, undefined)).toBe('el');
+    expect(resolveWireLanguage('en', 'de', 'de')).toBe('en');
+  });
+
+  it('rewrites a saved Deutsch preference to auto', () => {
+    const { config, issues } = parseConfig({ languageMode: 'de' });
+    expect(issues).toEqual([]);
+    expect(config.languageMode).toBe('auto');
+  });
+
+  it('copies the transcript to the clipboard by default', () => {
+    expect(DEFAULT_CONFIG.copyTranscript).toBe(true);
   });
 
   it('never returns the string "auto" — `language.rs:176-186`', () => {
-    for (const mode of ['auto', 'de', 'en'] as const) {
+    for (const mode of ['auto', 'en', 'el'] as const) {
       expect(resolveWireLanguage(mode, 'auto', 'auto')).not.toBe('auto');
     }
   });
