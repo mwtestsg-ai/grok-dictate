@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rcmd] — 2026-10-31
+
+Personal build. The version string is `0.5.0-rcmd` so it can be told apart from upstream 0.5.0.
+
+### Changed
+
+- **Push-to-talk is the right Command key.** Hold it to dictate. Hands-free is Right Command + Space, the same three-frame gesture Fn+Space used to be (press starts a hold, Space converts it to hands-free, release does not stop it; a later press of Right Command alone stops hands-free). Left Command is not a dictation key and still chords shortcuts, including Left Command+Space.
+- **The Globe / Fn key no longer starts dictation.** The event tap returns that key's events unmodified and does not listen for the system-defined Globe event, so macOS can still use it to switch input source.
+- Settings → Hotkeys reads `right cmd`, `right cmd+space`, `ctrl+cmd+v`, `esc`. A saved config that still says `fn` / `fn+space` is read as the new bindings.
+
 ## [0.5.0] — 2026-10-15
 
 Secure Input moves to the menu bar and names who holds it, a Grok CLI login no longer fails a dictation in its last minute, and Electron picks up current Chromium security fixes.

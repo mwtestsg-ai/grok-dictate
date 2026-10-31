@@ -303,7 +303,9 @@ describe('the tray tells the truth about a dead hotkey', () => {
   it('distinguishes a missing grant from a granted-but-dead tap', () => {
     // Different sentences because they need different actions: one is a trip
     // to System Settings, the other is not.
-    expect(trayStatusLabel('idle', false, false, true)).toBe('⚠️ The Fn key is not being detected');
+    expect(trayStatusLabel('idle', false, false, true)).toBe(
+      '⚠️ The dictation key is not being detected',
+    );
   });
 
   it('lets Secure Input speak when the tap is down because of it', () => {

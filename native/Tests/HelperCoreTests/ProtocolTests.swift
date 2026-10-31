@@ -252,8 +252,12 @@ struct CommandDecodingTests {
         )
         #expect(
             CommandDecoder.decode(
-                line: #"{"v":1,"type":"set_hotkeys","ptt":"fn","toggle":"fn+space","retry":"ctrl+cmd+v"}"#
-            ) == .command(.setHotkeys(ptt: "fn", toggle: "fn+space", retry: "ctrl+cmd+v"))
+                line:
+                    #"{"v":1,"type":"set_hotkeys","ptt":"rightcmd","toggle":"rightcmd+space","retry":"ctrl+cmd+v"}"#
+            )
+                == .command(
+                    .setHotkeys(ptt: "rightcmd", toggle: "rightcmd+space", retry: "ctrl+cmd+v")
+                )
         )
         #expect(
             CommandDecoder.decode(line: #"{"v":1,"type":"shutdown"}"#) == .command(.shutdown)
@@ -382,8 +386,8 @@ struct CommandDecodingTests {
             #"{"v":1,"type":"insert","id":"b","text":42}"#,
             #"{"v":1,"type":"copy"}"#,
             #"{"v":1,"type":"get_frontmost"}"#,
-            #"{"v":1,"type":"set_hotkeys","ptt":"fn"}"#,
-            #"{"v":1,"type":"set_hotkeys","ptt":"","toggle":"fn+space","retry":"ctrl+cmd+v"}"#,
+            #"{"v":1,"type":"set_hotkeys","ptt":"rightcmd"}"#,
+            #"{"v":1,"type":"set_hotkeys","ptt":"","toggle":"rightcmd+space","retry":"ctrl+cmd+v"}"#,
             #"{"v":1,"type":"insert","id":"b","text":"x","targetBundleId":42}"#,
         ]
     )

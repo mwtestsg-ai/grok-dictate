@@ -5,20 +5,20 @@
 [![Release](https://img.shields.io/github/v/release/Fynnius/grok-dictate?include_prereleases)](https://github.com/Fynnius/grok-dictate/releases/latest)
 [![CI](https://github.com/Fynnius/grok-dictate/actions/workflows/ci.yml/badge.svg)](https://github.com/Fynnius/grok-dictate/actions/workflows/ci.yml)
 
-Hold `Fn`, speak, release — the transcript is typed into whatever app has focus.
+Hold the right `Command` key, speak, release — the transcript is typed into whatever app has focus. The left Command key is left alone for shortcuts. The Globe / Fn key is not a dictation key.
 
 Unofficial menu-bar dictation for macOS. The xAI API path uses the public [streaming speech-to-text API](https://docs.x.ai/developers/model-capabilities/audio/speech-to-text) with an xAI API key or a Grok CLI login (Transcribe 2.0 by default, 1.0 pin-able). grok.com is a separate path for STT 2 Fast. Not affiliated with, endorsed by, or sponsored by xAI.
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Hold Fn to dictate — the transcript is typed at the cursor" width="800" />
+  <img src="docs/demo.gif" alt="Hold the right Command key to dictate — the transcript is typed at the cursor" width="800" />
 </p>
 
-|                      |                                                            |
-| -------------------- | ---------------------------------------------------------- |
-| `Fn` (hold)          | push-to-talk                                               |
-| `Fn` + `Space`       | hands-free toggle                                          |
-| `Ctrl` + `Cmd` + `V` | re-insert the last transcript wherever you are now pointed |
-| `Esc`                | cancel a recording                                         |
+|                           |                                                            |
+| ------------------------- | ---------------------------------------------------------- |
+| Right `Command` (hold)    | push-to-talk                                               |
+| Right `Command` + `Space` | hands-free toggle                                          |
+| `Ctrl` + `Cmd` + `V`      | re-insert the last transcript wherever you are now pointed |
+| `Esc`                     | cancel a recording                                         |
 
 **Dictation replaces what is on your clipboard, and does not put it back.** By default Grok Dictate pastes long text and anything going into a terminal, because typing 2,000 characters one keystroke at a time takes nearly two seconds and terminals drop it. The transcript is marked so clipboard managers skip it, and it is taken back off the pasteboard within about 200 ms of the target reading it — but whatever you had copied before is gone.
 
@@ -36,7 +36,7 @@ It is never _read_. There is no snapshot and no restore, deliberately: reading t
 ### Download (Apple Silicon)
 
 1. Get an [xAI API key](https://console.x.ai/team/default/api-keys). Streaming STT is **$0.20 / hour** ([pricing](https://docs.x.ai/docs/models#pricing)).
-2. Download `grok-dictate-0.5.0-mac-arm64.zip` from the [latest release](https://github.com/Fynnius/grok-dictate/releases/latest).
+2. Download `grok-dictate-0.5.0-mac-arm64.zip` from the [latest release](https://github.com/Fynnius/grok-dictate/releases/latest). Upstream 0.5.0 still uses the Fn hotkey. This fork is `0.5.0-rcmd`; build it from source (below) to get Right Command.
 3. Unzip and drag `Grok Dictate.app` to `/Applications`, then double-click it.
 
 On macOS Sequoia and later you will see **“Grok Dictate Not Opened”** with only **Move to Trash** and **Done**. Click **Done**, then:

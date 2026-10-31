@@ -254,7 +254,7 @@ export function HistoryView(): React.JSX.Element {
           <p className="primary">{query.length === 0 ? 'Nothing dictated yet' : 'No matches'}</p>
           <p className="secondary">
             {query.length === 0
-              ? 'Hold Fn and speak — every transcript lands here.'
+              ? 'Hold the right Command key and speak — every transcript lands here.'
               : `Nothing matches “${query}”.`}
           </p>
         </div>

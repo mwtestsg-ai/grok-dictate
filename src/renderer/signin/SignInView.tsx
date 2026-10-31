@@ -84,7 +84,9 @@ export function SignInView(): React.JSX.Element {
         ) : null}
 
         {alreadyIn ? (
-          <p className="signin-lead">You can close this window and hold Fn to dictate.</p>
+          <p className="signin-lead">
+            You can close this window and hold the right Command key to dictate.
+          </p>
         ) : (
           <>
             <label className="field">

@@ -100,11 +100,14 @@ export function createNativeHelper(logger: Logger): NativeHelperHandle {
   // failure  says will make a working app look broken. So say it
   // once, loudly, with the command that fixes it.
   if (!lookup.found) {
-    log.error('the native helper binary is missing — the Fn hotkey and text insertion are dead', {
-      expectedAt: lookup.path,
-      resolvedFrom: lookup.source,
-      hint: 'Build it with `./native/build.sh`, then restart the app.',
-    });
+    log.error(
+      'the native helper binary is missing — the dictation hotkey and text insertion are dead',
+      {
+        expectedAt: lookup.path,
+        resolvedFrom: lookup.source,
+        hint: 'Build it with `./native/build.sh`, then restart the app.',
+      },
+    );
   } else {
     try {
       accessSync(lookup.path, constants.X_OK);

@@ -1,14 +1,21 @@
 /// The `CGEventTap` — the reason this helper exists at all.
 ///
-/// Electron cannot install one, so it cannot see the Fn key and
+/// Electron cannot install one, so it cannot see Right Command and
 /// `globalShortcut` has no key-up concept. This tap watches
 /// `.flagsChanged`, `.keyDown` and `.keyUp`, hands each event to the pure
 /// `HotkeyRecognizer`, and either forwards or swallows it.
 ///
-/// `.defaultTap` rather than `.listenOnly`, because Fn+Space and Ctrl+Cmd+V
-/// have to be *consumed* — otherwise every hands-free toggle also types a space
-/// into whatever the user is looking at. That upgrade is what makes an
-/// Accessibility grant necessary rather than just Input Monitoring.
+/// `.defaultTap` rather than `.listenOnly`, because Right Command+Space and
+/// Ctrl+Cmd+V have to be *consumed* — otherwise every hands-free toggle also
+/// types a space into whatever the user is looking at. Right Command's own
+/// `.flagsChanged` is consumed too, so the key is not also a ⌘ modifier.
+/// Left Command is a different keycode and is never consumed. That upgrade is
+/// what makes an Accessibility grant necessary rather than just Input Monitoring.
+///
+/// The Globe / Fn key (keycode 63, `kVK_Function`) is returned untouched,
+/// before the recogniser, and this tap's mask does not include
+/// `NSSystemDefined` events. macOS input-source switching still sees the
+/// original Globe transition.
 ///
 /// The disabled-tap handling in `handle(type:event:)` is the single most
 /// important branch in this file. See `TapHealth.swift`.
@@ -137,11 +144,18 @@ final class EventTapController {
         default: return Unmanaged.passUnretained(event)
         }
 
+        let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
+        // Globe / Fn. Do this before the recogniser so a future binding change
+        // cannot swallow or rewrite the event macOS uses to switch input source.
+        if keyCode == VirtualKey.function {
+            return Unmanaged.passUnretained(event)
+        }
+
         let timestampMs = Int(Date().timeIntervalSince1970 * 1000)
         let decision = recognizer.handle(
             KeyboardEvent(
                 kind: kind,
-                keyCode: Int(event.getIntegerValueField(.keyboardEventKeycode)),
+                keyCode: keyCode,
                 flags: ModifierFlags(rawValue: event.flags.rawValue),
                 isAutorepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
                 timestampMs: timestampMs
@@ -151,7 +165,13 @@ final class EventTapController {
         if !decision.actions.isEmpty {
             onActions(decision.actions, timestampMs)
         }
-        return decision.consumeEvent ? nil : Unmanaged.passUnretained(event)
+        if decision.consumeEvent {
+            return nil
+        }
+        if let replacement = decision.replacementFlags {
+            event.flags = CGEventFlags(rawValue: replacement.rawValue)
+        }
+        return Unmanaged.passUnretained(event)
     }
 }
 

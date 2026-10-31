@@ -91,7 +91,7 @@ export function StatsView(): React.JSX.Element {
         <div className="empty-state stats-empty">
           <p className="primary">Nothing dictated yet</p>
           <p className="secondary">
-            Hold Fn and speak. Stats appear here from your history —{' '}
+            Hold the right Command key and speak. Stats appear here from your history —{' '}
             {stats.windowLabel.toLowerCase()}— and vanish if you delete it.
           </p>
         </div>

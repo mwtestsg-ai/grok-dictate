@@ -91,7 +91,7 @@ struct CommandRouterTests {
             onHotkeysChanged: { applied = $0 }
         )
         router.handle(
-            line: #"{"v":1,"type":"set_hotkeys","ptt":"fn","toggle":"fn+space","retry":"ctrl+cmd+v"}"#
+            line: #"{"v":1,"type":"set_hotkeys","ptt":"rightcmd","toggle":"rightcmd+space","retry":"ctrl+cmd+v"}"#
         )
         #expect(applied == .default)
         #expect(recorder.logMessages.isEmpty)
@@ -101,11 +101,11 @@ struct CommandRouterTests {
     func setHotkeysWarns() {
         let (router, recorder, _) = makeRouter()
         router.handle(
-            line: #"{"v":1,"type":"set_hotkeys","ptt":"f13","toggle":"fn+space","retry":"ctrl+cmd+v"}"#
+            line: #"{"v":1,"type":"set_hotkeys","ptt":"f13","toggle":"rightcmd+space","retry":"ctrl+cmd+v"}"#
         )
         #expect(recorder.logMessages.count == 1)
         #expect(recorder.logMessages[0].contains("f13"))
-        #expect(router.hotkeys.ptt == .fn)
+        #expect(router.hotkeys.ptt == .rightCmd)
     }
 
     @Test("shutdown produces the shutdown effect")

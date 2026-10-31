@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 //
-// The native macOS binaries — the things Electron cannot do: observe the Fn
-// key, put text into another application, and capture the microphone as raw
+// The native macOS binaries — the things Electron cannot do: observe Right
+// Command, put text into another application, and capture the microphone as raw
 // 16 kHz PCM without Chromium's audio graph.
 //
 // Split deliberately into these targets:

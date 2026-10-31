@@ -151,9 +151,11 @@ overlooked one.
 
 ## Permissions
 
-The tap is created with `.defaultTap`, not `.listenOnly`, because `Fn+Space` and
-`Ctrl+Cmd+V` must be **consumed** — otherwise every hands-free toggle also types
-a space into whatever the user is looking at. That requires **Accessibility**,
+The tap is created with `.defaultTap`, not `.listenOnly`, because Right
+Command+Space and `Ctrl+Cmd+V` must be **consumed** — otherwise every hands-free
+toggle also types a space into whatever the user is looking at. Right Command's
+own flags-changed event is consumed too, so it is not also a shortcut modifier.
+The Globe / Fn key is never consumed. That requires **Accessibility**,
 which also gates the AX insertion tier.
 
 Both are reported at start-up as `log` frames with the exact System Settings

@@ -122,7 +122,7 @@ export function trayStatusLabel(
     // the difference between a working app and a broken one — it must not
     // render as the same grey row.
     return accessibility
-      ? '⚠️ The Fn key is not being detected'
+      ? '⚠️ The dictation key is not being detected'
       : '⚠️ Accessibility permission is needed';
   }
   if (secureInput || state === 'blocked') {

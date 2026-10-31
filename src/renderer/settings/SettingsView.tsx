@@ -22,6 +22,7 @@ import type { ApiSttModel, AppConfig, LanguageMode, SttTransport } from '@contra
 import {
   API_STT_MODEL_LABELS,
   DEFAULT_CONFIG,
+  formatHotkey,
   isKnownApiSttModel,
   sttModelLabel,
 } from '@contracts/config.js';
@@ -432,7 +433,7 @@ export function SettingsView(): React.JSX.Element {
           <div className="card-row">
             <span className="row-label">
               Ignore accidental taps
-              <InfoTip text="A brushed Fn key used to open a socket, ship a sliver of room tone, and show a failure. On, a short tap that is measurably silent is dropped without waiting on the server. Real one-word dictations — yes, no, OK — are kept. Off sends every release to the recogniser." />
+              <InfoTip text="A brushed Right Command used to open a socket, ship a sliver of room tone, and show a failure. On, a short tap that is measurably silent is dropped without waiting on the server. Real one-word dictations — yes, no, OK — are kept. Off sends every release to the recogniser." />
             </span>
             <Switch
               checked={config.silenceGate}
@@ -515,15 +516,15 @@ export function SettingsView(): React.JSX.Element {
         <div className="card">
           <div className="card-row">
             <span className="row-label">Push to talk</span>
-            <kbd>{config.hotkeys.ptt}</kbd>
+            <kbd>{formatHotkey(config.hotkeys.ptt)}</kbd>
           </div>
           <div className="card-row">
             <span className="row-label">Hands-free</span>
-            <kbd>{config.hotkeys.toggle}</kbd>
+            <kbd>{formatHotkey(config.hotkeys.toggle)}</kbd>
           </div>
           <div className="card-row">
             <span className="row-label">Re-insert the last transcript</span>
-            <kbd>{config.hotkeys.retry}</kbd>
+            <kbd>{formatHotkey(config.hotkeys.retry)}</kbd>
           </div>
           <div className="card-row">
             <span className="row-label">Cancel</span>

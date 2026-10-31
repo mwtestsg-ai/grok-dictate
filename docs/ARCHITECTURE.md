@@ -27,7 +27,7 @@ Effects are data (`start_capture`, `connect_stt`, `insert_text`, `show_hud`, …
 what makes a full dictation round-trip unit-testable without Electron.
 
 Session states: `idle` → `recording` → `processing` → `inserting` → `idle`.
-`blocked` is Secure Input (password fields). `Esc` and a second `Fn+Space` are
+`blocked` is Secure Input (password fields). `Esc` and a second Right Command+Space are
 first-class events.
 
 ## Ports

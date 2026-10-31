@@ -62,7 +62,7 @@ import type { StatsViewModel } from '../src/shared/stats.js';
 export const SESSION_STATES = ['idle', 'recording', 'processing', 'inserting', 'blocked'] as const;
 export type SessionState = (typeof SESSION_STATES)[number];
 
-/** How the current session was started. `toggle` is hands-free (Fn+Space). */
+/** How the current session was started. `toggle` is hands-free (Right Command+Space). */
 export type SessionMode = 'hold' | 'toggle';
 
 /* ------------------------------------------------------------------ *
@@ -265,7 +265,7 @@ export type RendererToMain =
    * always meant "stop and keep it" (stop_capture + finish_stt, as opposed to
    * `cancel`'s cancel_capture + abort_stt), but no renderer message reached it.
    * Routed as `TOGGLE`, so in any state it means exactly what a second
-   * Fn+Space means there.
+   * Right Command+Space means there.
    */
   | { type: 'stop-recording' }
   /** Take the pill off the screen without touching the session. Added in

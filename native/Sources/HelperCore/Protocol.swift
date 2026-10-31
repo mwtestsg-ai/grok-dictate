@@ -172,7 +172,7 @@ public enum HelperFrame: Sendable, Equatable {
     )
     /// Whether the helper can actually do its job. Contract §2; added in
     /// Phase 5 so the tray stops claiming "Ready" while the event tap failed to
-    /// install and the Fn key is dead.
+    /// install and the dictation key is dead.
     case permissions(accessibility: Bool, hotkeyActive: Bool)
     case log(level: LogLevel, message: String)
 

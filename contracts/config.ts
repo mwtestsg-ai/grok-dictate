@@ -140,16 +140,31 @@ export const STT_LANGUAGE_CATALOG = [
 /** `language.rs:30` — `STT_LANGUAGE_DEFAULT = "en"`. */
 export const STT_LANGUAGE_DEFAULT = 'en';
 
+/** Push-to-talk: hold Right Command. Left Command is not a dictation key. */
+export const HOTKEY_PTT = 'rightcmd';
+/** Hands-free: Right Command + Space, the same gesture Fn+Space used to be. */
+export const HOTKEY_TOGGLE = 'rightcmd+space';
+/** Re-insert the last transcript. Either Command key; the chord is unchanged. */
+export const HOTKEY_RETRY = 'ctrl+cmd+v';
+
+/**
+ * What Settings shows for a stored hotkey token. The stored value stays the
+ * machine token (`rightcmd`); the pane reads `right cmd`.
+ */
+export function formatHotkey(binding: string): string {
+  return binding.replaceAll('rightcmd', 'right cmd');
+}
+
 export const HotkeyBindingsSchema = z.object({
-  /** Push-to-talk. `fn` is `kCGEventFlagMaskSecondaryFn`. */
-  ptt: z.string().min(1).default('fn'),
+  /** Push-to-talk. Right Command, keycode 54, not the Globe/Fn key. */
+  ptt: z.string().min(1).default(HOTKEY_PTT),
   /** Hands-free toggle. */
-  toggle: z.string().min(1).default('fn+space'),
+  toggle: z.string().min(1).default(HOTKEY_TOGGLE),
   /**
    * In-memory re-insertion, NOT a paste. Wispr Flow uses the
    * same combination for "Paste Last Transcript" (§4.7) — convergent design.
    */
-  retry: z.string().min(1).default('ctrl+cmd+v'),
+  retry: z.string().min(1).default(HOTKEY_RETRY),
 });
 export type HotkeyBindings = z.infer<typeof HotkeyBindingsSchema>;
 
@@ -203,9 +218,9 @@ export const AppConfigSchema = z.object({
   repairSeams: z.boolean().default(true),
 
   hotkeys: HotkeyBindingsSchema.default({
-    ptt: 'fn',
-    toggle: 'fn+space',
-    retry: 'ctrl+cmd+v',
+    ptt: HOTKEY_PTT,
+    toggle: HOTKEY_TOGGLE,
+    retry: HOTKEY_RETRY,
   }),
 
   /**
@@ -341,7 +356,7 @@ export const DEFAULT_CONFIG: AppConfig = AppConfigSchema.parse({});
 export function parseConfig(raw: unknown): { config: AppConfig; issues: string[] } {
   const source =
     raw !== null && typeof raw === 'object' && !Array.isArray(raw)
-      ? migrateSttFields(raw as Record<string, unknown>)
+      ? migrateHotkeys(migrateSttFields(raw as Record<string, unknown>))
       : raw;
 
   const parsed = AppConfigSchema.safeParse(source);
@@ -364,6 +379,35 @@ export function parseConfig(raw: unknown): { config: AppConfig; issues: string[]
     if (fieldResult.success) salvaged[key] = fieldResult.data;
   }
   return { config: AppConfigSchema.parse(salvaged), issues };
+}
+
+/**
+ * A config saved by 0.5.0 names the Globe key. This build's dictation key is
+ * Right Command, and the helper rejects `fn`, so leaving the old tokens on
+ * disk would show `fn` in Settings while the helper kept its own default.
+ * Each slot is rewritten on its own. Anything else is left for the helper to
+ * warn about.
+ */
+function migrateHotkeys(source: Record<string, unknown>): Record<string, unknown> {
+  const hotkeys = source.hotkeys;
+  if (hotkeys === null || typeof hotkeys !== 'object' || Array.isArray(hotkeys)) return source;
+  const current = hotkeys as Record<string, unknown>;
+  const legacy: Record<string, string> = {
+    fn: HOTKEY_PTT,
+    'fn+space': HOTKEY_TOGGLE,
+  };
+  let changed = false;
+  const nextHotkeys: Record<string, unknown> = { ...current };
+  for (const slot of ['ptt', 'toggle', 'retry'] as const) {
+    const value = current[slot];
+    const replacement = typeof value === 'string' ? legacy[value] : undefined;
+    if (replacement !== undefined && replacement !== value) {
+      nextHotkeys[slot] = replacement;
+      changed = true;
+    }
+  }
+  if (!changed) return source;
+  return { ...source, hotkeys: nextHotkeys };
 }
 
 /**

@@ -266,7 +266,7 @@ function main(): void {
     orchestrator.reportError(
       'helper_unavailable',
       'The Grok Dictate input helper stopped and could not be restarted.',
-      'The Fn key and text insertion are not working. Quit and reopen Grok Dictate; if it keeps happening, rebuild the helper with `./native/build.sh`.',
+      'The dictation key and text insertion are not working. Quit and reopen Grok Dictate; if it keeps happening, rebuild the helper with `./native/build.sh`.',
     );
   });
 

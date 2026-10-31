@@ -3,6 +3,7 @@ import {
   AppConfigSchema,
   DEFAULT_CONFIG,
   DEFAULT_STT_MODEL,
+  formatHotkey,
   GROK_COM_STT_MODEL,
   parseConfig,
   resolveTurnSttModel,
@@ -14,6 +15,25 @@ describe('config defaults', () => {
   it('defaults to auto language and no keyterms', () => {
     expect(DEFAULT_CONFIG.languageMode).toBe('auto');
     expect(DEFAULT_CONFIG.keyterms).toEqual([]);
+  });
+
+  it('defaults push-to-talk to Right Command and shows that in Settings', () => {
+    expect(DEFAULT_CONFIG.hotkeys).toEqual({
+      ptt: 'rightcmd',
+      toggle: 'rightcmd+space',
+      retry: 'ctrl+cmd+v',
+    });
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.ptt)).toBe('right cmd');
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.toggle)).toBe('right cmd+space');
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.retry)).toBe('ctrl+cmd+v');
+  });
+
+  it('migrates a saved Fn hotkey config onto Right Command', () => {
+    const { config, issues } = parseConfig({
+      hotkeys: { ptt: 'fn', toggle: 'fn+space', retry: 'ctrl+cmd+v' },
+    });
+    expect(issues).toEqual([]);
+    expect(config.hotkeys).toEqual(DEFAULT_CONFIG.hotkeys);
   });
 
   it('defaults dictation to the xAI API with Transcribe 2.0 pinned', () => {
