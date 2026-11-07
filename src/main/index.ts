@@ -522,7 +522,10 @@ function main(): void {
       logFile: logFilePath(logsDir),
       auth: status.state === 'signed-in' ? status.source : status.state,
     });
-    if (status.state !== 'signed-in') {
+    const selected = config.get().sttTransport;
+    if (selected === 'grok-com') {
+      if (!(await grokCom.hasSession())) await grokComSignIn.open();
+    } else if (status.state !== 'signed-in') {
       await signIn.open();
     }
     // From here the token is kept alive in the background, so a dictation should

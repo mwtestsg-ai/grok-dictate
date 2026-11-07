@@ -14,6 +14,7 @@
  */
 
 import { app, Menu, nativeImage, shell, Tray, type MenuItemConstructorOptions } from 'electron';
+import { configForDictationQuality } from '@contracts/config.js';
 import type { HudView, SessionState } from '@contracts/events.js';
 import { secureInputHoldersEqual, type SecureInputHolder } from '@contracts/helper-protocol.js';
 import type { ConfigPort, HelperPermissions, TrayPort } from '@contracts/ports.js';
@@ -103,6 +104,9 @@ export function createTray(deps: TrayDeps): TrayPort {
     switch (action.kind) {
       case 'set-language':
         void config.set({ ...config.get(), languageMode: action.mode });
+        return;
+      case 'set-dictation-quality':
+        void config.set({ ...config.get(), ...configForDictationQuality(action.quality) });
         return;
       case 'copy-history': {
         const row = recentHistory.find((entry) => entry.id === action.id);

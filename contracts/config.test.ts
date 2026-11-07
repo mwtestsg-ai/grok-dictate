@@ -5,6 +5,8 @@ import {
   DEFAULT_STT_MODEL,
   formatHotkey,
   GROK_COM_STT_MODEL,
+  configForDictationQuality,
+  dictationQuality,
   parseConfig,
   resolveTurnSttModel,
   resolveWireLanguage,
@@ -222,6 +224,19 @@ describe('resolveWireLanguage', () => {
 
   it('copies the transcript to the clipboard by default', () => {
     expect(DEFAULT_CONFIG.copyTranscript).toBe(true);
+  });
+
+  it('maps Fast and Accurate onto the two sockets without other fields', () => {
+    expect(dictationQuality({ sttTransport: 'grok-com' })).toBe('fast');
+    expect(dictationQuality({ sttTransport: 'api' })).toBe('accurate');
+    expect(configForDictationQuality('fast')).toEqual({
+      sttTransport: 'grok-com',
+      sttModel: 'grok-stt-2-fast',
+    });
+    expect(configForDictationQuality('accurate')).toEqual({
+      sttTransport: 'api',
+      sttModel: 'grok-voice-transcribe-2.0',
+    });
   });
 
   it('never returns the string "auto" — `language.rs:176-186`', () => {

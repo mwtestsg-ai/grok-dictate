@@ -125,7 +125,7 @@ export function parseAuthDocument(
           remainingMs <= 0
             ? `The Grok token expired at ${formatLocalTime(parsed.expiresAt)}.`
             : `The Grok token expires at ${formatLocalTime(parsed.expiresAt)}, too soon to start a dictation.`,
-          'Sign in under Settings → Account, or run `grok` in a terminal. Grok Dictate never refreshes the Grok CLI token itself.',
+          'Accurate needs Grok CLI login: run grok login',
         ),
       );
     }
@@ -202,8 +202,8 @@ export class GrokAuthProvider implements AuthPort {
         return err(
           appError(
             'auth_missing',
-            'Grok Dictate could not find a login.',
-            'Open the Sign in window and paste an xAI API key, or run `grok` in a terminal.',
+            'Accurate needs Grok CLI login: run grok login',
+            'The app looks for the binary at ~/.grok/bin/grok.',
             cause,
           ),
         );

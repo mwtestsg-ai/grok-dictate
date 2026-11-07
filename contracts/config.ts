@@ -513,3 +513,23 @@ export function resolveTurnSttModel(config: {
   if (config.sttModel === GROK_COM_STT_MODEL) return DEFAULT_STT_MODEL;
   return resolveWireSttModel(config.sttModel);
 }
+
+/** Tray and Settings label. Fast is the grok.com socket; Accurate is the API. */
+export type DictationQuality = 'fast' | 'accurate';
+
+export function dictationQuality(config: {
+  readonly sttTransport: SttTransport;
+}): DictationQuality {
+  return config.sttTransport === 'grok-com' ? 'fast' : 'accurate';
+}
+
+/**
+ * The two fields a mode switch writes. Logins are not in here, so flipping
+ * modes does not sign either of them out. Read again on the next hold.
+ */
+export function configForDictationQuality(
+  quality: DictationQuality,
+): Pick<AppConfig, 'sttTransport' | 'sttModel'> {
+  if (quality === 'fast') return { sttTransport: 'grok-com', sttModel: GROK_COM_STT_MODEL };
+  return { sttTransport: 'api', sttModel: DEFAULT_STT_MODEL };
+}

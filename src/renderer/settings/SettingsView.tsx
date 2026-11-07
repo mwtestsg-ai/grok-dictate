@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ApiSttModel, AppConfig, LanguageMode, SttTransport } from '@contracts/config.js';
 import {
   API_STT_MODEL_LABELS,
+  configForDictationQuality,
   DEFAULT_CONFIG,
   formatHotkey,
   isKnownApiSttModel,
@@ -42,8 +43,8 @@ const LANGUAGE_OPTIONS: readonly (readonly [LanguageMode, string])[] = [
 ];
 
 const STT_TRANSPORT_OPTIONS: readonly (readonly [SttTransport, string])[] = [
-  ['api', 'xAI API'],
-  ['grok-com', 'grok.com'],
+  ['grok-com', 'Fast'],
+  ['api', 'Accurate'],
 ];
 
 const API_STT_MODEL_OPTIONS: readonly (readonly [ApiSttModel, string])[] = [
@@ -310,15 +311,17 @@ export function SettingsView(): React.JSX.Element {
           </div>
           <div className="card-row">
             <span className="row-label">
-              Dictation via
-              <InfoTip text="xAI API uses the Grok CLI login and talks to api.x.ai. grok.com uses the website session and STT 2 Fast." />
+              Model
+              <InfoTip text="Fast is grok.com (grok-stt-2-fast). Accurate is api.x.ai Transcribe 2.0 with the Grok CLI login. The next dictation uses whichever is selected. Switching does not sign the other login out." />
             </span>
             <span className="control">
               <Segmented
                 options={STT_TRANSPORT_OPTIONS}
                 value={config.sttTransport}
-                onChange={(transport) => save({ sttTransport: transport })}
-                ariaLabel="Dictation via"
+                onChange={(transport) =>
+                  save(configForDictationQuality(transport === 'grok-com' ? 'fast' : 'accurate'))
+                }
+                ariaLabel="Model, Fast or Accurate"
               />
               {config.sttTransport === 'api' && auth !== null && auth.state !== 'signed-in' ? (
                 <>

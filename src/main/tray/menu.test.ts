@@ -138,6 +138,28 @@ describe('buildTrayMenu', () => {
     expect(items).not.toContain('audioCues');
   });
 
+  it('offers Fast and Accurate as radios and checks the active socket', () => {
+    const fast = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, sttTransport: 'grok-com' } }));
+    expect(fast.find((i) => i.id === 'model.fast')?.checked).toBe(true);
+    expect(fast.find((i) => i.id === 'model.accurate')?.checked).toBe(false);
+    const accurate = buildTrayMenu(model());
+    expect(accurate.find((i) => i.id === 'model.accurate')?.checked).toBe(true);
+  });
+
+  it('offers Sign in only when Accurate is selected and the CLI is signed out', () => {
+    expect(ids(buildTrayMenu(model({ signedIn: false })))).toContain('sign-in');
+    expect(
+      ids(
+        buildTrayMenu(
+          model({
+            signedIn: false,
+            config: { ...DEFAULT_CONFIG, sttTransport: 'grok-com' },
+          }),
+        ),
+      ),
+    ).not.toContain('sign-in');
+  });
+
   it('offers Sign in only when nobody is signed in', () => {
     expect(ids(buildTrayMenu(model({ signedIn: true })))).not.toContain('sign-in');
     expect(ids(buildTrayMenu(model({ signedIn: false })))).toContain('sign-in');

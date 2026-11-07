@@ -12,7 +12,12 @@
  * to `Menu.buildFromTemplate`.
  */
 
-import type { AppConfig, LanguageMode } from '@contracts/config.js';
+import {
+  dictationQuality,
+  type AppConfig,
+  type DictationQuality,
+  type LanguageMode,
+} from '@contracts/config.js';
 import type { HudView, SessionState } from '@contracts/events.js';
 import type { SecureInputHolder } from '@contracts/helper-protocol.js';
 import type { TrayIconName } from './icons.js';
@@ -21,6 +26,7 @@ export type PanelName = 'settings' | 'history' | 'stats';
 
 export type TrayAction =
   | { kind: 'set-language'; mode: LanguageMode }
+  | { kind: 'set-dictation-quality'; quality: DictationQuality }
   /** Open System Settings at the pane that fixes a missing grant. */
   | { kind: 'open-accessibility-settings' }
   | { kind: 'open'; panel: PanelName }
@@ -281,7 +287,7 @@ export function buildTrayMenu(model: TrayModel): readonly TrayMenuItem[] {
   // IMPLEMENTATION-PLAN.md §4, "errors carry actionable text": saying the
   // permission is missing is worth little without the door to fix it, which is
   // buried four levels into System Settings.
-  if (!model.signedIn) {
+  if (dictationQuality(config) === 'accurate' && !model.signedIn) {
     items.push({
       id: 'sign-in',
       label: 'Sign in…',
@@ -299,6 +305,20 @@ export function buildTrayMenu(model: TrayModel): readonly TrayMenuItem[] {
 
   items.push(
     { id: 'sep.status', type: 'separator' },
+    {
+      id: 'model.fast',
+      label: 'Model: Fast',
+      type: 'radio',
+      checked: dictationQuality(config) === 'fast',
+      action: { kind: 'set-dictation-quality', quality: 'fast' },
+    },
+    {
+      id: 'model.accurate',
+      label: 'Model: Accurate',
+      type: 'radio',
+      checked: dictationQuality(config) === 'accurate',
+      action: { kind: 'set-dictation-quality', quality: 'accurate' },
+    },
     {
       id: 'language',
       label: 'Language',

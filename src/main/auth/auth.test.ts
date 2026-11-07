@@ -178,8 +178,8 @@ describe('GrokAuthProvider — reading the file', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('auth_missing');
-    expect(result.error.hint).toContain('grok');
-    expect(result.error.hint).toMatch(/Sign in|API key/);
+    expect(result.error.message).toContain('run grok login');
+    expect(result.error.hint).toContain('~/.grok/bin/grok');
   });
 
   it('reports invalid JSON without quoting the file', async () => {

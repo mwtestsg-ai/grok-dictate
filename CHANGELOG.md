@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rcmd.4] — 2026-11-07
+
+### Added
+
+- **Tray and Settings: Model Fast / Accurate.** Fast is grok.com `grok-stt-2-fast`. Accurate is `wss://api.x.ai/v1/stt` with `grok-voice-transcribe-2.0` and the Grok CLI login. The next dictation uses the new choice. Switching does not sign the other login out. The sign-in window opens at launch only when the selected mode is not signed in. A missing or expired CLI login says to run `grok login`.
+
 ## [0.5.0-rcmd.3] — 2026-10-31
 
 ### Changed
