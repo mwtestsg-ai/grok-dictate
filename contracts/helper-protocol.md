@@ -44,18 +44,20 @@ First frame after start-up. `caps` lists the insertion tiers this build can actu
 { "v": 1, "type": "hotkey", "action": "ptt_down", "ts": 1754683200000 }
 ```
 
-| `action`       | Source                                                           | Meaning                                                              |
-| -------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `ptt_down`     | `kCGEventFlagMaskSecondaryFn` **set** in a `.flagsChanged` event | Fn pressed — start recording                                         |
-| `ptt_up`       | that flag **cleared**                                            | Fn released — end the turn                                           |
-| `toggle`       | Space `keyDown` carrying the SecondaryFn flag                    | Hands-free start/stop                                                |
-| `retry_insert` | `Ctrl+Cmd+V`                                                     | Re-run the insertion ladder against the transcript already in memory |
+| `action`       | Source                                                              | Meaning                                                              |
+| -------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `ptt_down`     | Right Command **down** — `.flagsChanged`, keycode 54 (`0x36`)       | Right Command pressed — start recording                              |
+| `ptt_up`       | that key **up**                                                     | Right Command released — end the turn                                |
+| `toggle`       | Space `keyDown` while Right Command is held and Left Command is not | Hands-free start/stop                                                |
+| `retry_insert` | `Ctrl+Cmd+V`                                                        | Re-run the insertion ladder against the transcript already in memory |
 
 `ts` is milliseconds since the Unix epoch from the helper's clock. Same machine as the app, so no skew correction; it exists to measure hold duration.
 
 **`retry_insert` re-runs the ladder against `lastTranscript`.** `route` is the current `insertMethod`; it is not a clipboard _read_, but under `auto`/`paste` it may write a promise the same way a normal insert does.
 
-**Fn/Fn+Space disambiguation is the app's problem, not the helper's.** The helper reports both `ptt_down` and a subsequent `toggle` verbatim. : the mic opens immediately on `ptt_down` and the WebSocket handshake window doubles as the disambiguation window — a timer before opening the mic would clip the first word.
+**Right Command / Right Command+Space disambiguation is the app's problem, not the helper's.** The helper reports both `ptt_down` and a subsequent `toggle` verbatim. The mic opens immediately on `ptt_down` and the WebSocket handshake window doubles as the disambiguation window — a timer before opening the mic would clip the first word.
+
+Right Command is keycode 54 with `NX_DEVICERCMDKEYMASK` (`0x10`). Left Command is keycode 55 with `NX_DEVICELCMDKEYMASK` (`0x08`) and is never a dictation event. The Globe / Fn key (keycode 63, `kCGEventFlagMaskSecondaryFn`) is not a hotkey: the tap returns that event unmodified and does not include system-defined events in its mask, so macOS input-source switching still sees it. Right Command's own `.flagsChanged` is consumed so the key does not also chord shortcuts; Left Command is not consumed.
 
 ### `secure_input`
 
@@ -253,10 +255,16 @@ Answered by one `frontmost` frame echoing `id`.
 ### `set_hotkeys`
 
 ```jsonc
-{ "v": 1, "type": "set_hotkeys", "ptt": "fn", "toggle": "fn+space", "retry": "ctrl+cmd+v" }
+{
+  "v": 1,
+  "type": "set_hotkeys",
+  "ptt": "rightcmd",
+  "toggle": "rightcmd+space",
+  "retry": "ctrl+cmd+v",
+}
 ```
 
-Sent once after `ready` and again whenever settings change. Values are lower-case, `+`-separated tokens. v1 recognises exactly `fn`, `fn+space` and `ctrl+cmd+v`; an unrecognised binding must be reported via `log` at `warn` and the previous binding kept, never silently ignored.
+Sent once after `ready` and again whenever settings change. Values are lower-case, `+`-separated tokens. This build recognises exactly `rightcmd`, `rightcmd+space` and `ctrl+cmd+v`. `fn` and `fn+space` are unrecognised. An unrecognised binding must be reported via `log` at `warn` and the previous binding kept, never silently ignored. The app rewrites a saved `fn` / `fn+space` config to the new tokens before sending this frame.
 
 ### `shutdown`
 

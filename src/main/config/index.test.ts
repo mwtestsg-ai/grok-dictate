@@ -34,7 +34,7 @@ describe('createConfigStore', () => {
 
   it('round-trips through disk', async () => {
     const first = createConfigStore(dir, log);
-    const next: AppConfig = { ...DEFAULT_CONFIG, languageMode: 'de', endpointingMs: 250 };
+    const next: AppConfig = { ...DEFAULT_CONFIG, languageMode: 'el', endpointingMs: 250 };
     await first.set(next);
     const second = createConfigStore(dir, log);
     expect(second.get()).toEqual(next);
@@ -43,12 +43,12 @@ describe('createConfigStore', () => {
   it('salvages the valid fields of a partially invalid file and names the rejects', () => {
     writeFileSync(
       configPath(dir),
-      JSON.stringify({ languageMode: 'de', endpointingMs: 'soon', keyterms: ['kubectl'] }),
+      JSON.stringify({ languageMode: 'el', endpointingMs: 'soon', keyterms: ['kubectl'] }),
       'utf8',
     );
     const store = createConfigStore(dir, log);
 
-    expect(store.get().languageMode).toBe('de');
+    expect(store.get().languageMode).toBe('el');
     expect(store.get().keyterms).toEqual(['kubectl']);
     // The bad field falls back rather than taking the whole file down with it.
     expect(store.get().endpointingMs).toBe(DEFAULT_CONFIG.endpointingMs);
@@ -76,7 +76,7 @@ describe('createConfigStore', () => {
 
     await store.set({ ...DEFAULT_CONFIG, languageMode: 'en' });
     unsubscribe();
-    await store.set({ ...DEFAULT_CONFIG, languageMode: 'de' });
+    await store.set({ ...DEFAULT_CONFIG, languageMode: 'el' });
 
     expect(seen).toHaveLength(1);
     expect(seen[0]?.languageMode).toBe('en');

@@ -173,9 +173,59 @@ public enum AXWriteVerification {
     /// can duplicate text — the write may have landed and Unicode will type it
     /// again — which is unpleasant and visible, and  already puts
     /// visible-and-recoverable above silent: ⌃⌘V appends rather than replaces,
-    /// and "recovery is select-and-redo".
+    /// and "recovery is select-and-redo". A read that *does* show a landing —
+    /// the caret moved, or, after an error return, the character count grew —
+    /// is not this case. `postWriteAction` accepts it and Unicode does not run.
     public static func trustsWrite(_ verdict: AXWriteVerdict) -> Bool {
         if case .landed = verdict { return true }
         return false
+    }
+}
+
+/// What the ladder should do once an AX selected-text write has been attempted
+/// and the field has been read back.
+///
+/// The return code and the field are separate facts.
+///
+/// * Arc returns `kAXErrorSuccess` and inserts nothing. The caret does not
+///   move. Unicode must still run — that is the recovery for a discarded write.
+/// * Telegram for macOS returns `kAXErrorFailure` (-25200) and inserts anyway.
+///   Falling through types the same transcript a second time. A caret that
+///   moved, or a character count that grew, means the text is already there.
+///
+/// `kAXNumberOfCharacters` is consulted only after a *failed* write whose caret
+/// does not already prove a landing. It never overrides a successful write with
+/// an unchanged range: that is the discarded-write path, and a character-count
+/// glitch there would put the text back behind a green pill.
+public enum AXPostWriteAction: Sendable, Equatable {
+    /// Stop. The text is in the field. `despiteError` is set when the AX call
+    /// itself returned a failure.
+    case accept(despiteError: Bool)
+    /// The text is not shown to be in the field. The next tier may run.
+    case fallThrough
+}
+
+extension AXWriteVerification {
+    public static func postWriteAction(
+        writeReturnedSuccess: Bool,
+        verdict: AXWriteVerdict,
+        characterCountBefore: Int? = nil,
+        characterCountAfter: Int? = nil
+    ) -> AXPostWriteAction {
+        if trustsWrite(verdict) {
+            return .accept(despiteError: writeReturnedSuccess == false)
+        }
+        // A failed call can still have inserted. Growth in the field's
+        // character count is that evidence when the caret range is stale or
+        // unreadable. Any increase counts: the range check already treats an
+        // inexact advance as a landing, for the same reason (emoji, substitution).
+        if writeReturnedSuccess == false,
+            let before = characterCountBefore,
+            let after = characterCountAfter,
+            after > before
+        {
+            return .accept(despiteError: true)
+        }
+        return .fallThrough
     }
 }

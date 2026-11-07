@@ -439,7 +439,7 @@ describe('contract coverage (§5.1 — an unexercised contract is unvalidated)',
     seen.add('insert_result');
 
     // app→helper: set_hotkeys, copy — both answered with a `log` frame.
-    h.helper.setHotkeys({ ptt: 'fn', toggle: 'fn+space', retry: 'ctrl+cmd+v' });
+    h.helper.setHotkeys({ ptt: 'rightcmd', toggle: 'rightcmd+space', retry: 'ctrl+cmd+v' });
     h.helper.copy('explicit user action');
 
     // helper→app: hotkey

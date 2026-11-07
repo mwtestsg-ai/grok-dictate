@@ -1050,11 +1050,12 @@ function reduceRecording(snapshot: Snapshot, event: PostSecureEvent, env: Machin
 
   switch (event.type) {
     case 'PTT_UP': {
-      // In toggle mode this is the Fn release that follows Fn+Space (§4).
+      // In toggle mode this is the Right Command release that follows
+      // Right Command+Space (§4).
       if (ctx.mode !== 'hold') {
-        return ignored(snapshot, 'toggle mode ignores the Fn release', event);
+        return ignored(snapshot, 'toggle mode ignores the dictation-key release', event);
       }
-      // Accidental FN brushes are ~50–150ms. Cancel from recording so we
+      // Accidental key brushes are ~50–150ms. Cancel from recording so we
       // never show processing and never ask STT. Mic/socket still open on
       // down — delaying start clips the first word.
       const minHoldMs = env.minPttHoldMs?.() ?? 0;
@@ -1071,7 +1072,7 @@ function reduceRecording(snapshot: Snapshot, event: PostSecureEvent, env: Machin
             {
               type: 'log',
               level: 'debug',
-              message: 'ignored a sub-threshold FN tap',
+              message: 'ignored a sub-threshold dictation-key tap',
               fields: { minHoldMs },
             },
           ],
@@ -1086,7 +1087,11 @@ function reduceRecording(snapshot: Snapshot, event: PostSecureEvent, env: Machin
       return ctx.mode === 'hold'
         ? step('recording', { ...ctx, mode: 'toggle' }, [
             { type: 'hud', view: recordingView({ ...ctx, mode: 'toggle' }) },
-            { type: 'log', level: 'info', message: 'hold converted to hands-free (Fn+Space)' },
+            {
+              type: 'log',
+              level: 'info',
+              message: 'hold converted to hands-free (Right Command+Space)',
+            },
           ])
         : stopAndProcess();
 

@@ -74,7 +74,10 @@ enum Probes {
             report("FAILED to install the tap — \(detail)")
             exit(1)
         }
-        report("Tap installed. Hold Fn, tap Fn+Space, press Ctrl+Cmd+V. Ctrl+C to stop.")
+        report(
+            "Tap installed. Hold Right Command, tap Right Command+Space, press Ctrl+Cmd+V. "
+                + "Fn/Globe is not a hotkey. Ctrl+C to stop."
+        )
 
         if let forceDisableAfter {
             scheduleForcedDisable(controller: controller, after: forceDisableAfter, settings: settings)

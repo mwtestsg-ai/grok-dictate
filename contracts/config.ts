@@ -53,7 +53,8 @@ import {
  * if the server reports a detected language, read it; otherwise sticky
  * per-utterance detection.
  */
-export const LANGUAGE_MODES = ['auto', 'de', 'en'] as const;
+/** `auto` hears English or Greek. `en` and `el` pin one of those two. */
+export const LANGUAGE_MODES = ['auto', 'en', 'el'] as const;
 export const LanguageModeSchema = z.enum(LANGUAGE_MODES);
 export type LanguageMode = (typeof LANGUAGE_MODES)[number];
 
@@ -140,16 +141,31 @@ export const STT_LANGUAGE_CATALOG = [
 /** `language.rs:30` — `STT_LANGUAGE_DEFAULT = "en"`. */
 export const STT_LANGUAGE_DEFAULT = 'en';
 
+/** Push-to-talk: hold Right Command. Left Command is not a dictation key. */
+export const HOTKEY_PTT = 'rightcmd';
+/** Hands-free: Right Command + Space, the same gesture Fn+Space used to be. */
+export const HOTKEY_TOGGLE = 'rightcmd+space';
+/** Re-insert the last transcript. Either Command key; the chord is unchanged. */
+export const HOTKEY_RETRY = 'ctrl+cmd+v';
+
+/**
+ * What Settings shows for a stored hotkey token. The stored value stays the
+ * machine token (`rightcmd`); the pane reads `right cmd`.
+ */
+export function formatHotkey(binding: string): string {
+  return binding.replaceAll('rightcmd', 'right cmd');
+}
+
 export const HotkeyBindingsSchema = z.object({
-  /** Push-to-talk. `fn` is `kCGEventFlagMaskSecondaryFn`. */
-  ptt: z.string().min(1).default('fn'),
+  /** Push-to-talk. Right Command, keycode 54, not the Globe/Fn key. */
+  ptt: z.string().min(1).default(HOTKEY_PTT),
   /** Hands-free toggle. */
-  toggle: z.string().min(1).default('fn+space'),
+  toggle: z.string().min(1).default(HOTKEY_TOGGLE),
   /**
    * In-memory re-insertion, NOT a paste. Wispr Flow uses the
    * same combination for "Paste Last Transcript" (§4.7) — convergent design.
    */
-  retry: z.string().min(1).default('ctrl+cmd+v'),
+  retry: z.string().min(1).default(HOTKEY_RETRY),
 });
 export type HotkeyBindings = z.infer<typeof HotkeyBindingsSchema>;
 
@@ -203,9 +219,9 @@ export const AppConfigSchema = z.object({
   repairSeams: z.boolean().default(true),
 
   hotkeys: HotkeyBindingsSchema.default({
-    ptt: 'fn',
-    toggle: 'fn+space',
-    retry: 'ctrl+cmd+v',
+    ptt: HOTKEY_PTT,
+    toggle: HOTKEY_TOGGLE,
+    retry: HOTKEY_RETRY,
   }),
 
   /**
@@ -255,6 +271,13 @@ export const AppConfigSchema = z.object({
    * user who unmutes or changes volume during the recording.
    */
   muteWhileRecording: z.boolean().default(true),
+
+  /**
+   * After a successful insert, leave the transcript on the system clipboard
+   * as a normal copy so a clipboard manager keeps it. The paste tier's promise
+   * is cleared or skipped; this write is the one that remains. Default on.
+   */
+  copyTranscript: z.boolean().default(true),
 
   /**
    * Chromium echo cancellation, noise suppression, auto-gain — telephony, not
@@ -341,7 +364,7 @@ export const DEFAULT_CONFIG: AppConfig = AppConfigSchema.parse({});
 export function parseConfig(raw: unknown): { config: AppConfig; issues: string[] } {
   const source =
     raw !== null && typeof raw === 'object' && !Array.isArray(raw)
-      ? migrateSttFields(raw as Record<string, unknown>)
+      ? migrateHotkeys(migrateLanguage(migrateSttFields(raw as Record<string, unknown>)))
       : raw;
 
   const parsed = AppConfigSchema.safeParse(source);
@@ -364,6 +387,41 @@ export function parseConfig(raw: unknown): { config: AppConfig; issues: string[]
     if (fieldResult.success) salvaged[key] = fieldResult.data;
   }
   return { config: AppConfigSchema.parse(salvaged), issues };
+}
+
+/**
+ * A config saved by 0.5.0 names the Globe key. This build's dictation key is
+ * Right Command, and the helper rejects `fn`, so leaving the old tokens on
+ * disk would show `fn` in Settings while the helper kept its own default.
+ * Each slot is rewritten on its own. Anything else is left for the helper to
+ * warn about.
+ */
+function migrateHotkeys(source: Record<string, unknown>): Record<string, unknown> {
+  const hotkeys = source.hotkeys;
+  if (hotkeys === null || typeof hotkeys !== 'object' || Array.isArray(hotkeys)) return source;
+  const current = hotkeys as Record<string, unknown>;
+  const legacy: Record<string, string> = {
+    fn: HOTKEY_PTT,
+    'fn+space': HOTKEY_TOGGLE,
+  };
+  let changed = false;
+  const nextHotkeys: Record<string, unknown> = { ...current };
+  for (const slot of ['ptt', 'toggle', 'retry'] as const) {
+    const value = current[slot];
+    const replacement = typeof value === 'string' ? legacy[value] : undefined;
+    if (replacement !== undefined && replacement !== value) {
+      nextHotkeys[slot] = replacement;
+      changed = true;
+    }
+  }
+  if (!changed) return source;
+  return { ...source, hotkeys: nextHotkeys };
+}
+
+/** Deutsch was a tray option. This build only inserts English and Greek. */
+function migrateLanguage(source: Record<string, unknown>): Record<string, unknown> {
+  if (source.languageMode !== 'de') return source;
+  return { ...source, languageMode: 'auto' };
 }
 
 /**
@@ -415,14 +473,13 @@ function migrateSttFields(source: Record<string, unknown>): Record<string, unkno
  */
 export function resolveWireLanguage(
   mode: LanguageMode,
-  detected: string | undefined,
-  localeSubtag: string | undefined,
+  _detected?: string,
+  _localeSubtag?: string,
 ): string | null {
-  if (mode === 'auto') return null;
-  if (isCatalogLanguage(mode)) return mode;
-  if (detected !== undefined && isCatalogLanguage(detected)) return detected;
-  if (localeSubtag !== undefined && isCatalogLanguage(localeSubtag)) return localeSubtag;
-  return STT_LANGUAGE_DEFAULT;
+  // One code only, and it is a bias. `auto` omits it so English and Greek can
+  // both be detected. The output filter is what refuses every other language.
+  if (mode === 'en' || mode === 'el') return mode;
+  return null;
 }
 
 export function isCatalogLanguage(code: string): boolean {
@@ -455,4 +512,24 @@ export function resolveTurnSttModel(config: {
   if (config.sttTransport === 'grok-com') return GROK_COM_STT_MODEL;
   if (config.sttModel === GROK_COM_STT_MODEL) return DEFAULT_STT_MODEL;
   return resolveWireSttModel(config.sttModel);
+}
+
+/** Tray and Settings label. Fast is the grok.com socket; Accurate is the API. */
+export type DictationQuality = 'fast' | 'accurate';
+
+export function dictationQuality(config: {
+  readonly sttTransport: SttTransport;
+}): DictationQuality {
+  return config.sttTransport === 'grok-com' ? 'fast' : 'accurate';
+}
+
+/**
+ * The two fields a mode switch writes. Logins are not in here, so flipping
+ * modes does not sign either of them out. Read again on the next hold.
+ */
+export function configForDictationQuality(
+  quality: DictationQuality,
+): Pick<AppConfig, 'sttTransport' | 'sttModel'> {
+  if (quality === 'fast') return { sttTransport: 'grok-com', sttModel: GROK_COM_STT_MODEL };
+  return { sttTransport: 'api', sttModel: DEFAULT_STT_MODEL };
 }

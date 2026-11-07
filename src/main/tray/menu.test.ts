@@ -138,6 +138,28 @@ describe('buildTrayMenu', () => {
     expect(items).not.toContain('audioCues');
   });
 
+  it('offers Fast and Accurate as radios and checks the active socket', () => {
+    const fast = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, sttTransport: 'grok-com' } }));
+    expect(fast.find((i) => i.id === 'model.fast')?.checked).toBe(true);
+    expect(fast.find((i) => i.id === 'model.accurate')?.checked).toBe(false);
+    const accurate = buildTrayMenu(model());
+    expect(accurate.find((i) => i.id === 'model.accurate')?.checked).toBe(true);
+  });
+
+  it('offers Sign in only when Accurate is selected and the CLI is signed out', () => {
+    expect(ids(buildTrayMenu(model({ signedIn: false })))).toContain('sign-in');
+    expect(
+      ids(
+        buildTrayMenu(
+          model({
+            signedIn: false,
+            config: { ...DEFAULT_CONFIG, sttTransport: 'grok-com' },
+          }),
+        ),
+      ),
+    ).not.toContain('sign-in');
+  });
+
   it('offers Sign in only when nobody is signed in', () => {
     expect(ids(buildTrayMenu(model({ signedIn: true })))).not.toContain('sign-in');
     expect(ids(buildTrayMenu(model({ signedIn: false })))).toContain('sign-in');
@@ -151,9 +173,9 @@ describe('buildTrayMenu', () => {
   });
 
   it('checks the language mode currently in force', () => {
-    const menu = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, languageMode: 'de' } }));
+    const menu = buildTrayMenu(model({ config: { ...DEFAULT_CONFIG, languageMode: 'el' } }));
     const language = menu.find((i) => i.id === 'language')?.submenu ?? [];
-    expect(language.find((i) => i.id === 'language.de')?.checked).toBe(true);
+    expect(language.find((i) => i.id === 'language.el')?.checked).toBe(true);
     expect(language.find((i) => i.id === 'language.auto')?.checked).toBe(false);
     expect(
       language.every((i) => i.type === 'radio' || i.enabled === false || i.id.endsWith('sep')),
@@ -167,7 +189,9 @@ describe('buildTrayMenu', () => {
     const language = buildTrayMenu(model()).find((i) => i.id === 'language')?.submenu ?? [];
     const labels = language.map((i) => i.label ?? '').join(' ');
     expect(labels).not.toMatch(/force/i);
-    expect(labels).toMatch(/Prefer Deutsch/);
+    expect(labels).toMatch(/English/);
+    expect(labels).toMatch(/Greek/);
+    expect(labels).not.toMatch(/Deutsch/);
     expect(language.find((i) => i.id === 'language.note')?.enabled).toBe(false);
   });
 
@@ -303,7 +327,9 @@ describe('the tray tells the truth about a dead hotkey', () => {
   it('distinguishes a missing grant from a granted-but-dead tap', () => {
     // Different sentences because they need different actions: one is a trip
     // to System Settings, the other is not.
-    expect(trayStatusLabel('idle', false, false, true)).toBe('⚠️ The Fn key is not being detected');
+    expect(trayStatusLabel('idle', false, false, true)).toBe(
+      '⚠️ The dictation key is not being detected',
+    );
   });
 
   it('lets Secure Input speak when the tap is down because of it', () => {

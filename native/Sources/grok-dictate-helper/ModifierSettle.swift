@@ -24,10 +24,11 @@ import HelperCore
 enum ModifierSettle {
     /// Poll until no chord modifier is physically held, or the timeout expires.
     ///
-    /// Fn is deliberately not waited on: the state machine queues a `ptt_down`
-    /// that arrives while inserting rather than dropping it
-    /// (`contracts/state-machine.md` §5), so the user legitimately holds Fn
-    /// during an insert — and Fn alone triggers nothing in the target app.
+    /// Right Command is deliberately not waited on. It is the push-to-talk
+    /// key, and the state machine queues a `ptt_down` that arrives while
+    /// inserting rather than dropping it (`contracts/state-machine.md` §5), so
+    /// the user legitimately holds it during an insert. Left Command, Shift,
+    /// Control and Option are still waited on: those are shortcut modifiers.
     static func wait(timeout: TimeInterval, log: (LogLevel, String) -> Void) {
         guard timeout > 0 else { return }
         let step: TimeInterval = 0.01
@@ -50,11 +51,18 @@ enum ModifierSettle {
 
     static func heldChordModifiers() -> [String] {
         let flags = CGEventSource.flagsState(.combinedSessionState)
+        let bits = ModifierFlags(rawValue: flags.rawValue)
         var held: [String] = []
         if flags.contains(.maskShift) { held.append("Shift") }
         if flags.contains(.maskControl) { held.append("Control") }
         if flags.contains(.maskAlternate) { held.append("Option") }
-        if flags.contains(.maskCommand) { held.append("Command") }
+        // A command bit that is only the right key is the dictation hold, not
+        // a shortcut. Left Command (device-left, or a command bit with no side
+        // bit) still delays insertion. `flagsState` includes the
+        // device-dependent bits; see `ModifierFlags.deviceRightCommand`.
+        let rightOnly =
+            bits.contains(.deviceRightCommand) && !bits.contains(.deviceLeftCommand)
+        if flags.contains(.maskCommand), rightOnly == false { held.append("Command") }
         return held
     }
 }

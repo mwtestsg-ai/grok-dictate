@@ -21,6 +21,14 @@
 /// are stopped by `AXSelectedTextGate`; and Arc's web content, which admits
 /// nothing and is stopped by reading the caret back — see `AXWriteVerification`
 /// for the log that caught it and the reasoning behind the policy.
+///
+/// The inverse is also real. Telegram for macOS returns `kAXErrorFailure`
+/// (-25200) from `kAXSelectedTextAttribute` with `settable=true` and still
+/// inserts. Falling through to Unicode on that error types the transcript a
+/// second time. The caret, and failing that the character count, is read back
+/// before any fall-through. A landing skips Unicode. An unchanged caret after
+/// a *successful* write still falls through — that is Arc, and the count is
+/// not allowed to override it.
 
 import ApplicationServices
 import Foundation
@@ -204,29 +212,37 @@ final class AXInserter: AccessibilityInserting {
             }
         }
 
+        // Read before the write so a failed return can still be compared. The
+        // attribute is optional; a field that does not implement it leaves this
+        // nil and the caret remains the only signal. Not read when verification
+        // is off — that flag exists to bisect the read-back, and skipping the
+        // count read keeps the bisect honest.
+        let charactersBefore: Int? = verifyWrites ? copyCharacterCount(of: element) : nil
+
         let setError = AXUIElementSetAttributeValue(
             element,
             kAXSelectedTextAttribute as CFString,
             text as CFTypeRef
         )
-
-        guard setError == .success else {
-            let settableNote =
-                settableError == .success
-                ? "settable=\(isSettable.boolValue)"
-                : "settable check itself failed with \(describe(settableError))"
-            return .failed(
-                reason:
-                    "via the \(route), setting kAXSelectedTextAttribute returned "
-                    + "\(describe(setError)) (\(settableNote))"
-            )
-        }
+        let writeSucceeded = setError == .success
 
         // `GROK_DICTATE_AX_VERIFY=0`: the pre-Phase-5 behaviour, trusting the
         // return code. Kept only so the check can be bisected. `.succeeded`, not
         // `.confirmed` — nothing was read back, so the frame must say
-        // `verified: null` and let the app show "typed, unconfirmed".
-        guard let caretBefore else { return .succeeded }
+        // `verified: null` and let the app show "typed, unconfirmed". An error
+        // with verification off still declines: there is no caret to consult,
+        // which is what the flag turned off.
+        guard let caretBefore else {
+            if writeSucceeded { return .succeeded }
+            return .failed(
+                reason: failedWriteReason(
+                    setError,
+                    settableError: settableError,
+                    isSettable: isSettable.boolValue,
+                    route: route
+                )
+            )
+        }
 
         var caretAfter: AXSelectedRange?
         var afterReadFailure: String?
@@ -240,21 +256,68 @@ final class AXInserter: AccessibilityInserting {
             after: caretAfter,
             insertedUTF16Count: text.utf16.count
         )
-        // The caret moved, so the text is in there and the frame may say so:
-        // this is the tier the contract has always called trustworthy, and since
-        // BUG-1 it says *why* it is trustworthy rather than asking to be taken
-        // on faith.
-        if AXWriteVerification.trustsWrite(verdict) { return .confirmed }
-
+        // The count is a second signal, and only after an error whose caret
+        // does not already prove a landing. The success path does not read it
+        // again: a grown count there must not override an unchanged caret.
+        let charactersAfter: Int?
+        if writeSucceeded == false, AXWriteVerification.trustsWrite(verdict) == false {
+            charactersAfter = copyCharacterCount(of: element)
+        } else {
+            charactersAfter = nil
+        }
         let target = app.name ?? app.bundleId ?? "the frontmost application"
         let evidence = afterReadFailure.map { "\(verdict.evidence) (\($0))" } ?? verdict.evidence
+
+        switch AXWriteVerification.postWriteAction(
+            writeReturnedSuccess: writeSucceeded,
+            verdict: verdict,
+            characterCountBefore: charactersBefore,
+            characterCountAfter: charactersAfter
+        ) {
+        case .accept(let despiteError):
+            // The caret moved, or — only after an error return — the character
+            // count grew. The text is in the field. Unicode would type it again.
+            if despiteError {
+                let why: String
+                if AXWriteVerification.trustsWrite(verdict) {
+                    why = evidence
+                } else {
+                    why =
+                        characterCountLanding(before: charactersBefore, after: charactersAfter)
+                        ?? evidence
+                }
+                log(
+                    .warn,
+                    "\(target) returned \(describe(setError)) from setting kAXSelectedTextAttribute, "
+                        + "but the text landed (\(why)). Skipping Unicode injection"
+                )
+            }
+            return .confirmed
+        case .fallThrough:
+            break
+        }
+
+        if writeSucceeded == false {
+            let countNote = characterCountNote(before: charactersBefore, after: charactersAfter)
+            return .failed(
+                reason:
+                    failedWriteReason(
+                        setError,
+                        settableError: settableError,
+                        isSettable: isSettable.boolValue,
+                        route: route
+                    )
+                    + "; caret check did not show a landing (\(evidence)\(countNote))"
+            )
+        }
 
         if verdict.isDiscardedWrite {
             // A warning, not an info line, because this is a diagnosis of the
             // other application rather than a normal decline: it said the
             // attribute was settable, said the write succeeded, and did
             // nothing. Without a line like this the only trace of the Arc bug
-            // was an 11 ms insert in the state-machine log.
+            // was an 11 ms insert in the state-machine log. The character count
+            // is not allowed to veto this branch — see `postWriteAction`.
             log(
                 .warn,
                 "\(target) accepted an AX write and discarded it — \(evidence). Falling through "
@@ -275,6 +338,47 @@ final class AXInserter: AccessibilityInserting {
         )
         return .failed(reason: "via the \(route), the write could not be confirmed — \(evidence)")
     }
+
+    private func failedWriteReason(
+        _ setError: AXError,
+        settableError: AXError,
+        isSettable: Bool,
+        route: String
+    ) -> String {
+        let settableNote =
+            settableError == .success
+            ? "settable=\(isSettable)"
+            : "settable check itself failed with \(describe(settableError))"
+        return
+            "via the \(route), setting kAXSelectedTextAttribute returned "
+            + "\(describe(setError)) (\(settableNote))"
+    }
+
+    private func characterCountNote(before: Int?, after: Int?) -> String {
+        guard let before, let after else { return "" }
+        return "; kAXNumberOfCharacters \(before) → \(after)"
+    }
+
+    private func characterCountLanding(before: Int?, after: Int?) -> String? {
+        guard let before, let after, after > before else { return nil }
+        return "kAXNumberOfCharacters went from \(before) to \(after)"
+    }
+}
+
+/// `kAXNumberOfCharacters`, or nil when the element does not implement it.
+///
+/// A number, not the document. Used only to tell a failed AX write that still
+/// inserted (Telegram) from one that did not. The insertion path does not read
+/// `kAXValue`.
+func copyCharacterCount(of element: AXUIElement) -> Int? {
+    var characters: CFTypeRef?
+    let error = AXUIElementCopyAttributeValue(
+        element,
+        kAXNumberOfCharactersAttribute as CFString,
+        &characters
+    )
+    guard error == .success else { return nil }
+    return (characters as? NSNumber)?.intValue
 }
 
 enum AXFocusedElementRead {

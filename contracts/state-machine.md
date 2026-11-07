@@ -93,7 +93,7 @@ Carried alongside the state; not part of it.
 | Event                       | →                            | Effects                                                                                                                         |
 | --------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `PTT_UP` when `mode=hold`   | `processing`                 | `stop_capture`, `unmute_output`, `finish_stt`, `hud(processing)`, `cue(stop)`                                                   |
-| `PTT_UP` when `mode=toggle` | —                            | the Fn release that follows an `Fn+Space`                                                                                       |
+| `PTT_UP` when `mode=toggle` | —                            | the Right Command release that follows Right Command+Space                                                                      |
 | `TOGGLE` when `mode=hold`   | `recording` (`mode=toggle`)  | **converts a hold into hands-free** — see §4                                                                                    |
 | `TOGGLE` when `mode=toggle` | `processing`                 | `stop_capture`, `unmute_output`, `finish_stt`, `hud(processing)`, `cue(stop)`                                                   |
 | `PTT_DOWN`                  | —                            | already recording; must not reset `mode`                                                                                        |
@@ -151,16 +151,16 @@ Carried alongside the state; not part of it.
 
 ---
 
-## 4. Fn versus Fn+Space
+## 4. Right Command versus Right Command+Space
 
-The helper reports raw key events; disambiguation is the app's job (`helper-protocol.md` §2).
+The helper reports raw key events; disambiguation is the app's job (`helper-protocol.md` §2). The physical key is Right Command. Fn is not observed.
 
-Pressing `Fn+Space` produces **three** frames: `ptt_down` (Fn), `toggle` (Space with the Fn flag), `ptt_up` (Fn released). So:
+Pressing Right Command+Space produces **three** frames: `ptt_down` (Right Command), `toggle` (Space while Right Command is held), `ptt_up` (Right Command released). So:
 
 - `idle` + `ptt_down` starts recording in `hold` mode **immediately** — no delay. and §11.2.6: a ~180 ms disambiguation window would clip the first word. The WebSocket handshake window is the disambiguation window instead, and the PCM captured during it is buffered (§4.3), so nothing is lost either way.
 - A `toggle` arriving while `mode=hold` converts the session to hands-free, so the following `ptt_up` does not stop it.
 - **In hands-free, a bare `ptt_down` also stops.** Added in Phase 5 at the user's direction — _"i want to toggle not by pressing fn + space AGAIN, but only pressing fn should be possible aswell"_. It is the obvious gesture, and Phase 5's HT-9 log caught the old behaviour turning it down (`ignored PTT_DOWN: already recording`) immediately before the user reached for Fn+Space instead.
-- Fn+Space still stops hands-free — on its `ptt_down`, now. The `toggle` and `ptt_up` that follow both arrive in `processing`, where `toggle` is ignored and `ptt_up` clears `pendingStart`, so nothing restarts and no stray space is typed.
+- Right Command+Space still stops hands-free — on its `ptt_down`, now. The `toggle` and `ptt_up` that follow both arrive in `processing`, where `toggle` is ignored and `ptt_up` clears `pendingStart`, so nothing restarts and no stray space is typed.
 - In `hold` mode a second `ptt_down` is still ignored: it is the key that is already down.
 
 **Known consequence:** pressing Space mid-hold converts an intended push-to-talk into hands-free. That is inherent to the gesture, not a bug in the machine.

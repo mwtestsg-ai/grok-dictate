@@ -45,15 +45,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { AuthStatus, CliAuthStatus } from '@contracts/events.js';
 import type { AuthPort, Bearer } from '@contracts/ports.js';
-import {
-  API_KEY_SENTINEL_EXPIRY,
-  AUTH_JSON_RELATIVE_PATH,
-  TOKEN_EXPIRY_MARGIN_MS,
-} from '@shared/constants.js';
+import { AUTH_JSON_RELATIVE_PATH, TOKEN_EXPIRY_MARGIN_MS } from '@shared/constants.js';
 import type { Logger } from '@shared/logger.js';
 import { appError, err, ok, type Result } from '@shared/result.js';
 import type { CredentialStore } from './store.js';
-import { validateApiKey } from './validate.js';
 import type { GrokCliRenewer } from './renew.js';
 
 export function defaultAuthPath(): string {
@@ -130,7 +125,7 @@ export function parseAuthDocument(
           remainingMs <= 0
             ? `The Grok token expired at ${formatLocalTime(parsed.expiresAt)}.`
             : `The Grok token expires at ${formatLocalTime(parsed.expiresAt)}, too soon to start a dictation.`,
-          'Open the Sign in window and paste an xAI API key, or run `grok` in a terminal. Grok Dictate never refreshes the Grok CLI token itself.',
+          'Accurate needs Grok CLI login: run grok login',
         ),
       );
     }
@@ -207,8 +202,8 @@ export class GrokAuthProvider implements AuthPort {
         return err(
           appError(
             'auth_missing',
-            'Grok Dictate could not find a login.',
-            'Open the Sign in window and paste an xAI API key, or run `grok` in a terminal.',
+            'Accurate needs Grok CLI login: run grok login',
+            'The app looks for the binary at ~/.grok/bin/grok.',
             cause,
           ),
         );
@@ -319,8 +314,6 @@ export class GrokAuthProvider implements AuthPort {
 export interface DictateAuthOptions {
   readonly store: CredentialStore;
   readonly cli?: AuthProviderOptions;
-  /** Overridable for tests. Defaults to `XAI_API_KEY` via `envString`. */
-  readonly envToken?: string | undefined;
   /**
    * Spawns the Grok CLI so it renews its own login. Absent means the feature is
    * compiled out entirely — every path below degrades to the previous
@@ -387,14 +380,13 @@ const RENEW_MARGIN_MS = 4 * 60_000;
 const STALE_TOKEN_FLOOR_MS = 30_000;
 
 /**
- * The auth the app actually uses: a stored xAI API key, then `XAI_API_KEY`,
- * then the Grok CLI file. There is still no refresh path — an API key is a
- * static secret, and a CLI token is only ever read.
+ * The auth the app uses for `wss://api.x.ai/v1/stt`: the Grok CLI file only.
+ * A stored API key is deleted and never read. grok.com is a separate cookie
+ * session and does not come through here.
  */
 export class DictateAuth implements AuthPort {
   readonly #store: CredentialStore;
   readonly #cli: GrokAuthProvider;
-  readonly #envToken: string | undefined;
   readonly #renewer: GrokCliRenewer | undefined;
   readonly #autoRenew: () => boolean;
   readonly #log: Logger;
@@ -404,7 +396,6 @@ export class DictateAuth implements AuthPort {
   constructor(logger: Logger, options: DictateAuthOptions) {
     this.#store = options.store;
     this.#cli = new GrokAuthProvider(logger, options.cli);
-    this.#envToken = options.envToken;
     this.#renewer = options.renewer;
     this.#autoRenew = options.autoRenew ?? ((): boolean => true);
     this.#log = logger.child('auth');
@@ -418,14 +409,6 @@ export class DictateAuth implements AuthPort {
   }
 
   async getBearer(): Promise<Result<Bearer>> {
-    const stored = await this.#store.getApiKey();
-    if (stored !== null) {
-      return ok({ token: stored, expiresAt: API_KEY_SENTINEL_EXPIRY });
-    }
-    if (this.#envToken !== undefined && this.#envToken.length > 0) {
-      return ok({ token: this.#envToken, expiresAt: API_KEY_SENTINEL_EXPIRY });
-    }
-
     const first = await this.#cli.getBearer();
     if (first.ok) return first;
 
@@ -576,9 +559,6 @@ export class DictateAuth implements AuthPort {
    */
   async renewIfExpiringSoon(): Promise<void> {
     if (this.#renewer === undefined || !this.#autoRenew()) return;
-    // An API key never expires, and the CLI login is not what we are using.
-    if ((await this.#store.getApiKey()) !== null) return;
-    if (this.#envToken !== undefined && this.#envToken.length > 0) return;
 
     const expiry = await this.#cli.peekExpiry();
     if (expiry === null) return; // Nothing to renew from — see `getBearer`.
@@ -603,15 +583,12 @@ export class DictateAuth implements AuthPort {
     return this.cliStatus();
   }
 
-  async status(): Promise<AuthStatus> {
-    const stored = await this.#store.getApiKey();
-    if (stored !== null) {
-      return { state: 'signed-in', source: 'api-key', expiresAt: null };
-    }
-    if (this.#envToken !== undefined && this.#envToken.length > 0) {
-      return { state: 'signed-in', source: 'environment', expiresAt: null };
-    }
+  /** Delete a previously stored xAI API key. Sign-in is the Grok account only. */
+  async discardStoredApiKey(): Promise<void> {
+    await this.#store.clearApiKey();
+  }
 
+  async status(): Promise<AuthStatus> {
     const cli = await this.#cli.getBearer();
     if (cli.ok) {
       return {
@@ -632,23 +609,6 @@ export class DictateAuth implements AuthPort {
   }
 
   async refresh(): Promise<AuthStatus> {
-    const next = await this.status();
-    this.#emit(next);
-    return next;
-  }
-
-  async setApiKey(raw: string): Promise<Result<AuthStatus>> {
-    const validated = validateApiKey(raw);
-    if (!validated.ok) return validated;
-    const written = await this.#store.setApiKey(validated.value);
-    if (!written.ok) return written;
-    const next = await this.status();
-    this.#emit(next);
-    return ok(next);
-  }
-
-  async clearApiKey(): Promise<AuthStatus> {
-    await this.#store.clearApiKey();
     const next = await this.status();
     this.#emit(next);
     return next;

@@ -241,7 +241,10 @@ struct ClipboardDisciplineTests {
         router.handle(line: #"{"v":1,"type":"paste","text":"hallo"}"#)
         router.handle(line: #"{"v":99,"type":"copy","text":"hallo"}"#)
         router.handle(line: #"{"v":1,"type":"get_frontmost","id":"a"}"#)
-        router.handle(line: #"{"v":1,"type":"set_hotkeys","ptt":"fn","toggle":"fn+space","retry":"ctrl+cmd+v"}"#)
+        router.handle(
+            line:
+                #"{"v":1,"type":"set_hotkeys","ptt":"rightcmd","toggle":"rightcmd+space","retry":"ctrl+cmd+v"}"#
+        )
         router.handle(line: #"{"v":1,"type":"shutdown"}"#)
         #expect(pasteboard.writes.isEmpty)
     }

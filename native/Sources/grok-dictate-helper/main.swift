@@ -31,7 +31,7 @@ func intOption(_ name: String, default fallback: Int) -> Int {
 let usage = """
     grok-dictate-helper \(helperVersion)
 
-    The native half of Grok Dictate: it watches the Fn key and puts text into
+    The native half of Grok Dictate: it watches Right Command and puts text into
     other applications. With no arguments it speaks the newline-delimited JSON
     protocol in contracts/helper-protocol.md over stdin and stdout, which is how
     the Electron app runs it.

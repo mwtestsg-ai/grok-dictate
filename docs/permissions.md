@@ -6,7 +6,7 @@ A packaged `Grok Dictate.app` is its own TCC identity. Grants you made to Termin
 | ---------------- | --------------------------------------------- | ---------------------------------------------------------- |
 | Microphone       | Audio is captured only while a turn is active | HUD error; orange indicator never appears                  |
 | Accessibility    | The helper types into the frontmost app       | Transcript is kept; menu bar offers a shortcut to the pane |
-| Input Monitoring | Global `Fn` detection                         | Menu bar says the Fn key is not being detected             |
+| Input Monitoring | Global Right Command detection                | Menu bar says the dictation key is not being detected      |
 
 Reset this app’s grants (you will be asked again on next launch):
 

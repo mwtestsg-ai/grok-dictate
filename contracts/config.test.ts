@@ -3,7 +3,10 @@ import {
   AppConfigSchema,
   DEFAULT_CONFIG,
   DEFAULT_STT_MODEL,
+  formatHotkey,
   GROK_COM_STT_MODEL,
+  configForDictationQuality,
+  dictationQuality,
   parseConfig,
   resolveTurnSttModel,
   resolveWireLanguage,
@@ -14,6 +17,25 @@ describe('config defaults', () => {
   it('defaults to auto language and no keyterms', () => {
     expect(DEFAULT_CONFIG.languageMode).toBe('auto');
     expect(DEFAULT_CONFIG.keyterms).toEqual([]);
+  });
+
+  it('defaults push-to-talk to Right Command and shows that in Settings', () => {
+    expect(DEFAULT_CONFIG.hotkeys).toEqual({
+      ptt: 'rightcmd',
+      toggle: 'rightcmd+space',
+      retry: 'ctrl+cmd+v',
+    });
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.ptt)).toBe('right cmd');
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.toggle)).toBe('right cmd+space');
+    expect(formatHotkey(DEFAULT_CONFIG.hotkeys.retry)).toBe('ctrl+cmd+v');
+  });
+
+  it('migrates a saved Fn hotkey config onto Right Command', () => {
+    const { config, issues } = parseConfig({
+      hotkeys: { ptt: 'fn', toggle: 'fn+space', retry: 'ctrl+cmd+v' },
+    });
+    expect(issues).toEqual([]);
+    expect(config.hotkeys).toEqual(DEFAULT_CONFIG.hotkeys);
   });
 
   it('defaults dictation to the xAI API with Transcribe 2.0 pinned', () => {
@@ -141,18 +163,18 @@ describe('config defaults', () => {
   });
 
   it('ignores unknown extra fields rather than rejecting the file', () => {
-    const { config, issues } = parseConfig({ languageMode: 'de', someFutureFlag: true });
+    const { config, issues } = parseConfig({ languageMode: 'el', someFutureFlag: true });
     expect(issues).toEqual([]);
-    expect(config.languageMode).toBe('de');
+    expect(config.languageMode).toBe('el');
     expect(config.micProcessing).toBe(false);
   });
 });
 
 describe('parseConfig', () => {
   it('accepts a valid config unchanged', () => {
-    const { config, issues } = parseConfig({ ...DEFAULT_CONFIG, languageMode: 'de' });
+    const { config, issues } = parseConfig({ ...DEFAULT_CONFIG, languageMode: 'el' });
     expect(issues).toEqual([]);
-    expect(config.languageMode).toBe('de');
+    expect(config.languageMode).toBe('el');
   });
 
   it('salvages the good fields when one is invalid, rather than discarding the file', () => {
@@ -188,13 +210,37 @@ describe('resolveWireLanguage', () => {
     expect(resolveWireLanguage('auto', 'de', 'en')).toBeNull();
   });
 
-  it('sends the explicit code for de and en', () => {
-    expect(resolveWireLanguage('de', undefined, undefined)).toBe('de');
+  it('sends en or el, and nothing else', () => {
     expect(resolveWireLanguage('en', undefined, undefined)).toBe('en');
+    expect(resolveWireLanguage('el', undefined, undefined)).toBe('el');
+    expect(resolveWireLanguage('en', 'de', 'de')).toBe('en');
+  });
+
+  it('rewrites a saved Deutsch preference to auto', () => {
+    const { config, issues } = parseConfig({ languageMode: 'de' });
+    expect(issues).toEqual([]);
+    expect(config.languageMode).toBe('auto');
+  });
+
+  it('copies the transcript to the clipboard by default', () => {
+    expect(DEFAULT_CONFIG.copyTranscript).toBe(true);
+  });
+
+  it('maps Fast and Accurate onto the two sockets without other fields', () => {
+    expect(dictationQuality({ sttTransport: 'grok-com' })).toBe('fast');
+    expect(dictationQuality({ sttTransport: 'api' })).toBe('accurate');
+    expect(configForDictationQuality('fast')).toEqual({
+      sttTransport: 'grok-com',
+      sttModel: 'grok-stt-2-fast',
+    });
+    expect(configForDictationQuality('accurate')).toEqual({
+      sttTransport: 'api',
+      sttModel: 'grok-voice-transcribe-2.0',
+    });
   });
 
   it('never returns the string "auto" — `language.rs:176-186`', () => {
-    for (const mode of ['auto', 'de', 'en'] as const) {
+    for (const mode of ['auto', 'en', 'el'] as const) {
       expect(resolveWireLanguage(mode, 'auto', 'auto')).not.toBe('auto');
     }
   });

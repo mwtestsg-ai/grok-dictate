@@ -34,7 +34,7 @@ import { AppConfigSchema, resolveTurnSttModel, resolveWireLanguage } from '@cont
 import { addLogSink, consoleSink, createLogger, setLogLevel } from '@shared/logger.js';
 import { appError } from '@shared/result.js';
 import { STATS_ROW_CAP, aggregateStats } from '@shared/stats.js';
-import { envString, systemLanguageSubtag } from '@shared/env.js';
+import { systemLanguageSubtag } from '@shared/env.js';
 import { parseWav } from '@shared/wav.js';
 import { createAudioSource } from './audio/index.js';
 import { createAuthProvider } from './auth/index.js';
@@ -109,7 +109,6 @@ function main(): void {
       },
       log,
     ),
-    envToken: envString('XAI_API_KEY'),
     // Spawns `grok models` so the CLI renews its own login. The app still never
     // touches a refresh token — see the header of `auth/renew.ts`.
     renewer: new GrokCliRenewer({ logger: log }),
@@ -266,7 +265,7 @@ function main(): void {
     orchestrator.reportError(
       'helper_unavailable',
       'The Grok Dictate input helper stopped and could not be restarted.',
-      'The Fn key and text insertion are not working. Quit and reopen Grok Dictate; if it keeps happening, rebuild the helper with `./native/build.sh`.',
+      'The dictation key and text insertion are not working. Quit and reopen Grok Dictate; if it keeps happening, rebuild the helper with `./native/build.sh`.',
     );
   });
 
@@ -455,13 +454,6 @@ function main(): void {
         }
         case 'get-auth-status':
           return { type: 'auth-status', status: await auth.status() };
-        case 'set-api-key': {
-          const result = await auth.setApiKey(request.key);
-          if (!result.ok) return { type: 'error', error: result.error };
-          return { type: 'auth-status', status: result.value };
-        }
-        case 'clear-api-key':
-          return { type: 'auth-status', status: await auth.clearApiKey() };
         case 'get-grok-com-status':
           return { type: 'grok-com-status', signedIn: await grokCom.hasSession() };
         case 'grok-com-sign-out':
@@ -521,6 +513,7 @@ function main(): void {
     // a token that expired while the app was closed is the CLI's to renew, and
     // asking it takes about a second. Awaited so the decision below sees the
     // outcome rather than racing it.
+    await auth.discardStoredApiKey();
     await auth.renewIfExpiringSoon();
     const status = await auth.refresh();
     log.info('grok-dictate ready', {
@@ -529,7 +522,10 @@ function main(): void {
       logFile: logFilePath(logsDir),
       auth: status.state === 'signed-in' ? status.source : status.state,
     });
-    if (status.state !== 'signed-in') {
+    const selected = config.get().sttTransport;
+    if (selected === 'grok-com') {
+      if (!(await grokCom.hasSession())) await grokComSignIn.open();
+    } else if (status.state !== 'signed-in') {
       await signIn.open();
     }
     // From here the token is kept alive in the background, so a dictation should

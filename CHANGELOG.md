@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-rcmd.4] — 2026-11-07
+
+### Added
+
+- **Tray and Settings: Model Fast / Accurate.** Fast is grok.com `grok-stt-2-fast`. Accurate is `wss://api.x.ai/v1/stt` with `grok-voice-transcribe-2.0` and the Grok CLI login. The next dictation uses the new choice. Switching does not sign the other login out. The sign-in window opens at launch only when the selected mode is not signed in. A missing or expired CLI login says to run `grok login`.
+
+## [0.5.0-rcmd.3] — 2026-10-31
+
+### Changed
+
+- **Only English and Greek are inserted.** The tray and Settings offer English, Greek, or both. Automatic omits the `language` parameter so the server can hear either one; a pin sends `en` or `el` as a bias. The speech API has no allowlist, so anything it labels as another language is dropped, and text in any other script is dropped when it sends no label.
+- **The xAI API key sign-in is gone.** Dictation on the xAI API uses the Grok CLI account. A previously stored key is deleted on launch. grok.com remains the login for STT 2 Fast.
+- **Each successful dictation is copied to the clipboard** so a clipboard manager can keep it. The setting is on by default. The paste tier still clears its own promise; this copy is what remains.
+
+## [0.5.0-rcmd.2] — 2026-10-31
+
+### Fixed
+
+- **A failed AX write that still inserted no longer types the transcript twice.** Telegram for macOS can return `kAXErrorFailure` (-25200) from `kAXSelectedTextAttribute` after putting the text in the field. The helper now reads the caret back, and the character count if the caret does not show a landing, and skips Unicode injection when the text is already there. A successful write whose caret does not move still falls through to Unicode — that is the case where the application accepted the write and discarded it.
+
+## [0.5.0-rcmd] — 2026-10-31
+
+Personal build. The version string is `0.5.0-rcmd` so it can be told apart from upstream 0.5.0.
+
+### Changed
+
+- **Push-to-talk is the right Command key.** Hold it to dictate. Hands-free is Right Command + Space, the same three-frame gesture Fn+Space used to be (press starts a hold, Space converts it to hands-free, release does not stop it; a later press of Right Command alone stops hands-free). Left Command is not a dictation key and still chords shortcuts, including Left Command+Space.
+- **The Globe / Fn key no longer starts dictation.** The event tap returns that key's events unmodified and does not listen for the system-defined Globe event, so macOS can still use it to switch input source.
+- Settings → Hotkeys reads `right cmd`, `right cmd+space`, `ctrl+cmd+v`, `esc`. A saved config that still says `fn` / `fn+space` is read as the new bindings.
+
 ## [0.5.0] — 2026-10-15
 
 Secure Input moves to the menu bar and names who holds it, a Grok CLI login no longer fails a dictation in its last minute, and Electron picks up current Chromium security fixes.
